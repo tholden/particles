@@ -1,3 +1,0 @@
-#+STARTUP: overview
-#+STARTUP: hidestars
-#+AUTHOR: Stéphane Adjemian
