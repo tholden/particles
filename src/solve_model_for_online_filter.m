@@ -134,7 +134,8 @@ trend_coeff     = [];
 exit_flag       = 1;
 
 % Set the number of observed variables
-nvobs = DynareDataset.info.nvobs;
+%nvobs = DynareDataset.info.nvobs;
+nvobs = size(DynareDataset.data,1) ;
 
 %------------------------------------------------------------------------------
 % 1. Get the structural parameters & define penalties
@@ -240,15 +241,13 @@ Model.H = H;
 % Linearize the model around the deterministic sdteadystate and extract the matrices of the state equation (T and R).
 [T,R,SteadyState,info,Model,DynareOptions,DynareResults] = dynare_resolve(Model,DynareOptions,DynareResults,'restrict');
 
-%if info(1) == 1 || info(1) == 2 || info(1) == 5
-%    fval = objective_function_penalty_base+1;
-%    exit_flag = 0;
-%    return
-%elseif info(1) == 3 || info(1) == 4 || info(1)==6 ||info(1) == 19 || info(1) == 20 || info(1) == 21
-%    fval = objective_function_penalty_base+info(2);
-%    exit_flag = 0;
-%    return
-%end
+%disp(info)
+
+if info(1) ~= 0
+    ReducedForm = 0 ; 
+    exit_flag = 55;
+    return
+end
 
 % Define a vector of indices for the observed variables. Is this really usefull?...
 BayesInfo.mf = BayesInfo.mf1;
@@ -265,24 +264,24 @@ else
 end
 
 % Define the deterministic linear trend of the measurement equation.
-if BayesInfo.with_trend
-    trend_coeff = zeros(DynareDataset.info.nvobs,1);
-    t = DynareOptions.trend_coeffs;
-    for i=1:length(t)
-        if ~isempty(t{i})
-            trend_coeff(i) = evalin('base',t{i});
-        end
-    end
-    trend = repmat(constant,1,DynareDataset.info.ntobs)+trend_coeff*[1:DynareDataset.info.ntobs];
-else
-    trend = repmat(constant,1,DynareDataset.info.ntobs);
-end
+%if BayesInfo.with_trend
+%    trend_coeff = zeros(DynareDataset.info.nvobs,1);
+%    t = DynareOptions.trend_coeffs;
+%    for i=1:length(t)
+%        if ~isempty(t{i})
+%            trend_coeff(i) = evalin('base',t{i});
+%        end
+%    end
+%    trend = repmat(constant,1,DynareDataset.info.ntobs)+trend_coeff*[1:DynareDataset.info.ntobs];
+%else
+%    trend = repmat(constant,1,DynareDataset.info.ntobs);
+%end
 
 % Get needed informations for kalman filter routines.
 start = DynareOptions.presample+1;
 np    = size(T,1);
 mf    = BayesInfo.mf;
-Y     = transpose(DynareDataset.rawdata);
+Y     = transpose(DynareDataset.data);
 
 %------------------------------------------------------------------------------
 % 3. Initial condition of the Kalman filter
@@ -307,11 +306,18 @@ end
 
 ReducedForm.ghx  = dr.ghx(restrict_variables_idx,:);
 ReducedForm.ghu  = dr.ghu(restrict_variables_idx,:);
-ReducedForm.ghxx = dr.ghxx(restrict_variables_idx,:);
-ReducedForm.ghuu = dr.ghuu(restrict_variables_idx,:);
-ReducedForm.ghxu = dr.ghxu(restrict_variables_idx,:);
 ReducedForm.steadystate = dr.ys(dr.order_var(restrict_variables_idx));
-ReducedForm.constant = ReducedForm.steadystate + .5*dr.ghs2(restrict_variables_idx);
+if DynareOptions.order>1
+    ReducedForm.ghxx = dr.ghxx(restrict_variables_idx,:);
+    ReducedForm.ghuu = dr.ghuu(restrict_variables_idx,:);
+    ReducedForm.ghxu = dr.ghxu(restrict_variables_idx,:);
+    ReducedForm.constant = ReducedForm.steadystate + .5*dr.ghs2(restrict_variables_idx);
+else 
+    ReducedForm.ghxx = zeros(size(restrict_variables_idx,1),size(dr.kstate,2));
+    ReducedForm.ghuu = zeros(size(restrict_variables_idx,1),size(dr.ghu,2));
+    ReducedForm.ghxu = zeros(size(restrict_variables_idx,1),size(dr.ghx,2));
+    ReducedForm.constant = ReducedForm.steadystate ;
+end
 ReducedForm.state_variables_steady_state = dr.ys(dr.order_var(state_variables_idx));
 ReducedForm.Q = Q;
 ReducedForm.H = H;
@@ -323,7 +329,7 @@ if observation_number==1
     switch DynareOptions.particle.initialization
       case 1% Initial state vector covariance is the ergodic variance associated to the first order Taylor-approximation of the model.
         StateVectorMean = ReducedForm.constant(mf0);
-        StateVectorVariance = lyapunov_symm(ReducedForm.ghx(mf0,:),ReducedForm.ghu(mf0,:)*ReducedForm.Q*ReducedForm.ghu(mf0,:)',1e-12,1e-12,[],[],DynareOptions.debug);
+        StateVectorVariance = lyapunov_symm(ReducedForm.ghx(mf0,:),ReducedForm.ghu(mf0,:)*ReducedForm.Q*ReducedForm.ghu(mf0,:)',1e-12,1e-12);
       case 2% Initial state vector covariance is a monte-carlo based estimate of the ergodic variance (consistent with a k-order Taylor-approximation of the model).
         StateVectorMean = ReducedForm.constant(mf0);
         old_DynareOptionsperiods = DynareOptions.periods;
