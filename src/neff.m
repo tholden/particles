@@ -18,4 +18,4 @@ function n = neff(w)
 % You should have received a copy of the GNU General Public License
 % along with Dynare.  If not, see <http://www.gnu.org/licenses/>.
 
-n = dot(w,w);
+n = 1/dot(w,w);
