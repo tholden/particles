@@ -1,4 +1,4 @@
-function [LIK,lik] = auxiliary_particle_filter(ReducedForm,Y,start,DynareOptions)
+function [LIK,lik] = auxiliary_particle_filter(ReducedForm,Y,start,ParticleOptions,ThreadsOptions)
 
 % Evaluates the likelihood of a nonlinear model with a particle filter allowing eventually resampling.
 
@@ -28,7 +28,7 @@ if isempty(start)
 end
 
 % Set flag for prunning
-pruning = DynareOptions.particle.pruning;
+pruning = ParticleOptions.pruning;
 
 % Get steady state and mean.
 steadystate = ReducedForm.steadystate;
@@ -43,7 +43,7 @@ if isempty(init_flag)
     number_of_state_variables = length(mf0);
     number_of_observed_variables = length(mf1);
     number_of_structural_innovations = length(ReducedForm.Q);
-    number_of_particles = DynareOptions.particle.number_of_particles;
+    number_of_particles = ParticleOptions.number_of_particles;
     init_flag = 1;
 end
 
@@ -90,9 +90,9 @@ for t=1:sample_size
     yhat = bsxfun(@minus,StateVectors,state_variables_steady_state);
     if pruning
         yhat_ = bsxfun(@minus,StateVectors_,state_variables_steady_state);
-        [tmp, tmp_] = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,DynareOptions.threads.local_state_space_iteration_2);
+        [tmp, tmp_] = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,ThreadsOptions.local_state_space_iteration_2);
     else
-        tmp = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,DynareOptions.threads.local_state_space_iteration_2);
+        tmp = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,ThreadsOptions.local_state_space_iteration_2);
     end
     PredictedObservedMean = weights*(tmp(mf1,:)');
     PredictionError = bsxfun(@minus,Y(:,t),tmp(mf1,:));
@@ -106,16 +106,16 @@ for t=1:sample_size
     lik(t) = log(sum_tau_tilde) ; %+ .5*var_wtilde/(number_of_particles*(sum_tau_tilde*sum_tau_tilde)) ;
     tau_tilde = tau_tilde/sum_tau_tilde;
     if pruning
-        temp = resample([yhat' yhat_'],tau_tilde',DynareOptions);
+        temp = resample([yhat' yhat_'],tau_tilde',ParticleOptions);
         yhat = temp(:,1:number_of_state_variables)' ;
         yhat_ = temp(:,number_of_state_variables+1:2*number_of_state_variables)' ;
     else
-        yhat = resample(yhat',tau_tilde',DynareOptions)' ;
+        yhat = resample(yhat',tau_tilde',ParticleOptions)' ;
     end
     if pruning
-        [tmp, tmp_] = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,DynareOptions.threads.local_state_space_iteration_2);
+        [tmp, tmp_] = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,ThreadsOptions.local_state_space_iteration_2);
     else
-        tmp = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,DynareOptions.threads.local_state_space_iteration_2);
+        tmp = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,ThreadsOptions.local_state_space_iteration_2);
     end
     PredictedObservedMean = weights*(tmp(mf1,:)');
     PredictionError = bsxfun(@minus,Y(:,t),tmp(mf1,:));
@@ -124,10 +124,10 @@ for t=1:sample_size
     wtilde = exp(-.5*(const_lik+log(det(PredictedObservedVariance))+sum(PredictionError.*(PredictedObservedVariance\PredictionError),1))) ;
     epsilon = Q_lower_triangular_cholesky*randn(number_of_structural_innovations,number_of_particles);
     if pruning
-        [tmp, tmp_] = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,DynareOptions.threads.local_state_space_iteration_2);
+        [tmp, tmp_] = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,ThreadsOptions.local_state_space_iteration_2);
         StateVectors_ = tmp_(mf0,:);
     else
-        tmp = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,DynareOptions.threads.local_state_space_iteration_2);
+        tmp = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,ThreadsOptions.local_state_space_iteration_2);
     end
     StateVectors = tmp(mf0,:);
     PredictedObservedMean = mean(tmp(mf1,:),2);
