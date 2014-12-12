@@ -1,64 +1,23 @@
 function [LIK,lik] = sequential_importance_particle_filter(ReducedForm,Y,start,DynareOptions)
+
 % Evaluates the likelihood of a nonlinear model with a particle filter (optionally with resampling).
-% Standard Sequential Monte Carlo approach with 
-%    - the usual proposal (the state transition distribution)
-%    - options on resampling: none, adaptive or systematic 
-%@info:
-%! @deftypefn {Function File} {@var{y}, @var{y_} =} sequential_importance_particle_filter (@var{ReducedForm},@var{Y}, @var{start}, @var{DynareOptions})
-%! @anchor{particle/sequential_importance_particle_filter}
-%! @sp 1
-%! Evaluates the likelihood of a nonlinear model with a particle filter (optionally with resampling).
-%!
-%! @sp 2
-%! @strong{Inputs}
-%! @sp 1
-%! @table @ @var
-%! @item ReducedForm
-%! Structure describing the state space model (built in @ref{non_linear_dsge_likelihood}).
-%! @item Y
-%! p*smpl matrix of doubles (p is the number of observed variables), the (detrended) data.
-%! @item start
-%! Integer scalar, likelihood evaluation starts at observation 'start'.
-%! @item DynareOptions
-%! Structure specifying Dynare's options.
-%! @end table
-%! @sp 2
-%! @strong{Outputs}
-%! @sp 1
-%! @table @ @var
-%! @item LIK
-%! double scalar, value of (minus) the logged likelihood.
-%! @item lik
-%! smpl*1 vector of doubles, density of the observations at each period.
-%! @end table
-%! @sp 2
-%! @strong{This function is called by:}
-%! @ref{non_linear_dsge_likelihood}
-%! @sp 2
-%! @strong{This function calls:}
-%!
-%! @end deftypefn
-%@eod:
 
 % Copyright (C) 2011-2013 Dynare Team
 %
-% This file is part of Dynare.
+% This file is part of Dynare (particles module).
 %
 % Dynare is free software: you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
 % the Free Software Foundation, either version 3 of the License, or
 % (at your option) any later version.
 %
-% Dynare is distributed in the hope that it will be useful,
+% Dynare particles module is distributed in the hope that it will be useful,
 % but WITHOUT ANY WARRANTY; without even the implied warranty of
 % MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 % GNU General Public License for more details.
 %
 % You should have received a copy of the GNU General Public License
 % along with Dynare.  If not, see <http://www.gnu.org/licenses/>.
-
-% AUTHOR(S) frederic DOT karame AT univ DASH lemans DOT fr
-%           stephane DOT adjemian AT univ DASH lemans DOT fr
 
 persistent init_flag
 persistent mf0 mf1
