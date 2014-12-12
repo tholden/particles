@@ -1,4 +1,4 @@
-function initial_distribution = auxiliary_initialization(ReducedForm,Y,start,DynareOptions)
+function initial_distribution = auxiliary_initialization(ReducedForm,Y,start,ParticleOptions,ThreadsOptions)
 % Evaluates the likelihood of a nonlinear model with a particle filter allowing eventually resampling.
 %
 % INPUTS
@@ -45,7 +45,7 @@ if isempty(start)
 end
 
 % Set flag for prunning
-%pruning = DynareOptions.particle.pruning;
+%pruning = ParticleOptions.pruning;
 
 % Get steady state and mean.
 %steadystate = ReducedForm.steadystate;
@@ -58,7 +58,7 @@ if isempty(init_flag)
     mf1 = ReducedForm.mf1;
     number_of_observed_variables = length(mf1);
     number_of_structural_innovations = length(ReducedForm.Q);
-    number_of_particles = DynareOptions.particle.number_of_particles;
+    number_of_particles = ParticleOptions.number_of_particles;
     init_flag = 1;
 end
 
@@ -102,9 +102,9 @@ StateVectors = bsxfun(@plus,StateVectorVarianceSquareRoot*randn(state_variance_r
 yhat = bsxfun(@minus,StateVectors,state_variables_steady_state);
 %if pruning
 %    yhat_ = bsxfun(@minus,StateVectors_,state_variables_steady_state);
-%    [tmp, tmp_] = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,DynareOptions.threads.local_state_space_iteration_2);
+%    [tmp, tmp_] = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,ThreadsOptions.local_state_space_iteration_2);
 %else
-    tmp = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,DynareOptions.threads.local_state_space_iteration_2);
+    tmp = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,ThreadsOptions.local_state_space_iteration_2);
 %end
 PredictedObservedMean = weights*(tmp(mf1,:)');
 PredictionError = bsxfun(@minus,Y(:,t),tmp(mf1,:));
@@ -113,4 +113,4 @@ PredictedObservedVariance = bsxfun(@times,weights,dPredictedObservedMean)*dPredi
 wtilde = exp(-.5*(const_lik+log(det(PredictedObservedVariance))+sum(PredictionError.*(PredictedObservedVariance\PredictionError),1))) ;
 tau_tilde = weights.*wtilde ;
 tau_tilde = tau_tilde/sum(tau_tilde);
-initial_distribution = resample(StateVectors',tau_tilde',DynareOptions)' ;
+initial_distribution = resample(StateVectors',tau_tilde',ParticleOptions)' ;
