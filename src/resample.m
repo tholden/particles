@@ -1,4 +1,4 @@
-function resampled_particles = resample(particles,weights,DynareOptions)
+function resampled_particles = resample(particles,weights,ParticleOptions)
 % Resamples particles.
 
 %@info:
@@ -54,19 +54,19 @@ function resampled_particles = resample(particles,weights,DynareOptions)
 defaultmethod = 1; % For residual based method set this variable equal to 0.
 
 if defaultmethod
-    if DynareOptions.particle.resampling.method.kitagawa
+    if ParticleOptions.resampling.method.kitagawa
         resampled_particles = traditional_resampling(particles,weights,rand);
-    elseif DynareOptions.particle.resampling.method.stratified
+    elseif ParticleOptions.resampling.method.stratified
         resampled_particles = traditional_resampling(particles,weights,rand(size(weights)));
-    elseif DynareOptions.particle.resampling.method.smooth
+    elseif ParticleOptions.resampling.method.smooth
         resampled_particles = multivariate_smooth_resampling(particles,weights);
     else
         error('Unknow sampling method!')
     end
 else
-    if DynareOptions.particle.resampling.method.kitagawa
+    if ParticleOptions.resampling.method.kitagawa
         resampled_particles = residual_resampling(particles,weights,rand);
-    elseif DynareOptions.particle.resampling.method.stratified
+    elseif ParticleOptions.resampling.method.stratified
         resampled_particles = residual_resampling(particles,weights,rand(size(weights)));
     else
         error('Unknown sampling method!')
