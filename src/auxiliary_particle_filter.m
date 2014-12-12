@@ -1,41 +1,24 @@
 function [LIK,lik] = auxiliary_particle_filter(ReducedForm,Y,start,DynareOptions)
-% Evaluates the likelihood of a nonlinear model with a particle filter allowing eventually resampling.
-%
-% INPUTS
-%    ReducedForm     [structure] Matlab's structure describing the reduced form model.
-%                                       ReducedForm.measurement.H   [double]   (pp x pp) variance matrix of measurement errors.
-%                                       ReducedForm.state.Q         [double]   (qq x qq) variance matrix of state errors.
-%                                       ReducedForm.state.dr        [structure] output of resol.m.
-%    Y                      [double]    pp*smpl matrix of (detrended) data, where pp is the maximum number of observed variables.
-%    start                  [integer]   scalar, likelihood evaluation starts at 'start'.
-%    mf                     [integer]   pp*1 vector of indices.
-%    number_of_particles    [integer]   scalar.
-%
-% OUTPUTS
-%    LIK        [double]    scalar, likelihood
-%    lik        [double]    vector, density of observations in each period.
-%
-% REFERENCES
-%
-% NOTES
-%   The vector "lik" is used to evaluate the jacobian of the likelihood.
 
-% Copyright (C) 2011-2013 Dynare Team
+% Evaluates the likelihood of a nonlinear model with a particle filter allowing eventually resampling.
+
+% Copyright (C) 2011-2014 Dynare Team
 %
-% This file is part of Dynare.
+% This file is part of Dynare (particles module).
 %
 % Dynare is free software: you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
 % the Free Software Foundation, either version 3 of the License, or
 % (at your option) any later version.
 %
-% Dynare is distributed in the hope that it will be useful,
+% Dynare particles module is distributed in the hope that it will be useful,
 % but WITHOUT ANY WARRANTY; without even the implied warranty of
 % MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 % GNU General Public License for more details.
 %
 % You should have received a copy of the GNU General Public License
 % along with Dynare.  If not, see <http://www.gnu.org/licenses/>.
+
 persistent init_flag mf0 mf1 number_of_particles
 persistent sample_size number_of_state_variables number_of_observed_variables number_of_structural_innovations
 
