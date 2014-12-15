@@ -1,4 +1,4 @@
-function [ProposalStateVector,Weights] = conditional_filter_proposal(ReducedForm,obs,StateVectors,SampleWeights,Q_lower_triangular_cholesky,H_lower_triangular_cholesky,H,DynareOptions,normconst2)
+function [ProposalStateVector,Weights] = conditional_filter_proposal(ReducedForm,obs,StateVectors,SampleWeights,Q_lower_triangular_cholesky,H_lower_triangular_cholesky,H,ParticleOptions,ThreadsOptions,normconst2)
 %
 % Computes the proposal for each past particle using Gaussian approximations
 % for the state errors and the Kalman filter
@@ -73,11 +73,11 @@ if isempty(init_flag2)
     init_flag2 = 1;
 end
 
-if DynareOptions.particle.proposal_approximation.cubature || DynareOptions.particle.proposal_approximation.montecarlo
+if ParticleOptions.proposal_approximation.cubature || ParticleOptions.proposal_approximation.montecarlo
     [nodes,weights] = spherical_radial_sigma_points(number_of_structural_innovations);
     weights_c = weights ;
-elseif DynareOptions.particle.proposal_approximation.unscented
-    [nodes,weights,weights_c] = unscented_sigma_points(number_of_structural_innovations,DynareOptions);
+elseif ParticleOptions.proposal_approximation.unscented
+    [nodes,weights,weights_c] = unscented_sigma_points(number_of_structural_innovations,ParticleOptions);
 else
     error('Estimation: This approximation for the proposal is not implemented or unknown!')
 end
@@ -85,12 +85,12 @@ end
 epsilon = Q_lower_triangular_cholesky*(nodes') ;
 yhat = repmat(StateVectors-state_variables_steady_state,1,size(epsilon,2)) ;
 
-tmp = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,DynareOptions.threads.local_state_space_iteration_2);
+tmp = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,ThreadsOptions.local_state_space_iteration_2);
 
 PredictedStateMean = tmp(mf0,:)*weights ;
 PredictedObservedMean = tmp(mf1,:)*weights;
 
-if DynareOptions.particle.proposal_approximation.cubature || DynareOptions.particle.proposal_approximation.montecarlo
+if ParticleOptions.proposal_approximation.cubature || ParticleOptions.proposal_approximation.montecarlo
     PredictedStateMean = sum(PredictedStateMean,2) ;
     PredictedObservedMean = sum(PredictedObservedMean,2) ;
     dState = bsxfun(@minus,tmp(mf0,:),PredictedStateMean)'.*sqrt(weights) ;
@@ -117,7 +117,7 @@ else
 end
 
 ProposalStateVector = StateVectorVarianceSquareRoot*randn(size(StateVectorVarianceSquareRoot,2),1)+StateVectorMean ;
-ypred = measurement_equations(ProposalStateVector,ReducedForm,DynareOptions) ;
+ypred = measurement_equations(ProposalStateVector,ReducedForm,ThreadsOptions) ;
 foo = H_lower_triangular_cholesky \ (obs - ypred) ;
 likelihood = exp(-0.5*(foo)'*foo)/normconst2 + 1e-99 ;
 Weights = SampleWeights.*likelihood;

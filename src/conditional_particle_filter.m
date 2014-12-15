@@ -1,4 +1,4 @@
-function [LIK,lik] = conditional_particle_filter(ReducedForm,Y,start,DynareOptions)
+function [LIK,lik] = conditional_particle_filter(ReducedForm,Y,start,ParticleOptions,ThreadsOptions)
 % 
 % Evaluates the likelihood of a non-linear model with a particle filter
 % - the proposal is built using the Kalman updating step for each particle. 
@@ -74,7 +74,7 @@ if isempty(init_flag)
     number_of_state_variables = length(mf0);
     number_of_observed_variables = length(mf1);
     init_flag = 1;
-    number_of_particles = DynareOptions.particle.number_of_particles ;
+    number_of_particles = ParticleOptions.number_of_particles ;
 end
 
 % Get covariance matrices
@@ -108,14 +108,14 @@ SampleWeights = ones(1,number_of_particles)/number_of_particles ;
 for t=1:sample_size
     for i=1:number_of_particles 
       [StateParticles(:,i),SampleWeights(i)] = ...
-          conditional_filter_proposal(ReducedForm,Y(:,t),StateParticles(:,i),SampleWeights(i),Q_lower_triangular_cholesky,H_lower_triangular_cholesky,H,DynareOptions,normconst2) ;
+          conditional_filter_proposal(ReducedForm,Y(:,t),StateParticles(:,i),SampleWeights(i),Q_lower_triangular_cholesky,H_lower_triangular_cholesky,H,ParticleOptions,ThreadsOptions,normconst2) ;
     end
     SumSampleWeights = sum(SampleWeights) ;
     lik(t) = log(SumSampleWeights) ; 
     SampleWeights = SampleWeights./SumSampleWeights ;		
-    if (DynareOptions.particle.resampling.status.generic && neff(SampleWeights)<DynareOptions.particle.resampling.threshold*sample_size) || DynareOptions.particle.resampling.status.systematic
+    if (ParticleOptions.resampling.status.generic && neff(SampleWeights)<ParticleOptions.resampling.threshold*sample_size) || ParticleOptions.resampling.status.systematic
         ks = ks + 1 ;
-        StateParticles = resample(StateParticles',SampleWeights',DynareOptions)';
+        StateParticles = resample(StateParticles',SampleWeights',ParticleOptions)';
         SampleWeights = ones(1,number_of_particles)/number_of_particles ;
     end
 end

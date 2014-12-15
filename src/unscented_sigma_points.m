@@ -1,4 +1,4 @@
-function [nodes,W_m,W_c] = unscented_sigma_points(n,DynareOptions) 
+function [nodes,W_m,W_c] = unscented_sigma_points(n,ParticleOptions) 
 %
 % Computes nodes and weigths for a scaled unscented transform cubature 
 % INPUTS
@@ -31,10 +31,10 @@ function [nodes,W_m,W_c] = unscented_sigma_points(n,DynareOptions)
 % You should have received a copy of the GNU General Public License
 % along with Dynare.  If not, see <http://www.gnu.org/licenses/>.
 
-lambda = (DynareOptions.particle.unscented.alpha^2)*(n+DynareOptions.particle.unscented.kappa) - n ; 
+lambda = (ParticleOptions.unscented.alpha^2)*(n+ParticleOptions.unscented.kappa) - n ; 
 nodes = [ zeros(n,1) ( sqrt(n+lambda).*([ eye(n) -eye(n)]) ) ]' ;
 W_m = lambda/(n+lambda) ;
-W_c = W_m + (1-DynareOptions.particle.unscented.alpha^2+DynareOptions.particle.unscented.beta) ;
+W_c = W_m + (1-ParticleOptions.unscented.alpha^2+ParticleOptions.unscented.beta) ;
 temp = ones(2*n,1)/(2*(n+lambda)) ;
 W_m = [W_m ; temp] ; 
 W_c = [W_c ; temp]  ; 
