@@ -1,4 +1,4 @@
-function [LIK,lik] = gaussian_mixture_filter(ReducedForm,Y,start,DynareOptions)
+function [LIK,lik] = gaussian_mixture_filter(ReducedForm,Y,start,ParticleOptions,ThreadsOptions)
 % Evaluates the likelihood of a non-linear model approximating the state
 % variables distributions with gaussian mixtures. Gaussian Mixture allows reproducing
 % a wide variety of generalized distributions (when multimodal for instance).
@@ -71,12 +71,12 @@ if isempty(init_flag)
   number_of_state_variables = length(mf0);
   number_of_observed_variables = length(mf1);
   number_of_structural_innovations = length(ReducedForm.Q);
-  G = DynareOptions.particle.mixture_state_variables;           % number of GM components in state
-  I = DynareOptions.particle.mixture_structural_shocks ;        % number of GM components in structural noise
-  J = DynareOptions.particle.mixture_measurement_shocks ;       % number of GM components in observation noise
+  G = ParticleOptions.mixture_state_variables;           % number of GM components in state
+  I = ParticleOptions.mixture_structural_shocks ;        % number of GM components in structural noise
+  J = ParticleOptions.mixture_measurement_shocks ;       % number of GM components in observation noise
   Gprime = G*I ;
   Gsecond = G*I*J ;
-  number_of_particles = DynareOptions.particle.number_of_particles;
+  number_of_particles = ParticleOptions.number_of_particles;
   init_flag = 1;
 end
 
@@ -84,19 +84,19 @@ SampleWeights = ones(Gsecond,1)/Gsecond ;
 
 % compute gaussian quadrature nodes and weights on states and shocks
 if isempty(nodes)
-    if DynareOptions.particle.distribution_approximation.cubature
+    if ParticleOptions.distribution_approximation.cubature
         [nodes,weights] = spherical_radial_sigma_points(number_of_state_variables);
         weights_c = weights;
-    elseif DynareOptions.particle.distribution_approximation.unscented
-        [nodes,weights,weights_c] = unscented_sigma_points(number_of_state_variables,DynareOptions);
+    elseif ParticleOptions.distribution_approximation.unscented
+        [nodes,weights,weights_c] = unscented_sigma_points(number_of_state_variables,ParticleOptions);
     else
-        if ~DynareOptions.particle.distribution_approximation.montecarlo
+        if ~ParticleOptions.distribution_approximation.montecarlo
             error('Estimation: This approximation for the proposal is not implemented or unknown!')
         end
     end
 end
 
-if DynareOptions.particle.distribution_approximation.montecarlo
+if ParticleOptions.distribution_approximation.montecarlo
     set_dynare_seed('default');
     SampleWeights = 1/number_of_particles ;
 end
@@ -161,7 +161,7 @@ for t=1:sample_size
                  gaussian_mixture_filter_bank(ReducedForm,Y(:,t),StateMu(:,g),StateSqrtP(:,:,g),StateWeights(1,g),...
                                                                  StructuralShocksMu(:,i),StructuralShocksSqrtP(:,:,i),StructuralShocksWeights(1,i),...
                                                                  ObservationShocksMu(:,j),ObservationShocksSqrtP(:,:,j),ObservationShocksWeights(1,j),...
-                                                                 H,H_lower_triangular_cholesky,const_lik,DynareOptions) ;
+                                                                 H,H_lower_triangular_cholesky,const_lik,ParticleOptions,ThreadsOptions) ;
             end
         end
     end
@@ -170,12 +170,12 @@ for t=1:sample_size
     StateWeightsPrior = StateWeightsPrior/sum(StateWeightsPrior,2) ;
     StateWeightsPost = StateWeightsPost/sum(StateWeightsPost,2) ;
 
-    if DynareOptions.particle.distribution_approximation.cubature || DynareOptions.particle.distribution_approximation.unscented
+    if ParticleOptions.distribution_approximation.cubature || ParticleOptions.distribution_approximation.unscented
         for i=1:Gsecond
             StateParticles = bsxfun(@plus,StateMuPost(:,i),StateSqrtPPost(:,:,i)*nodes') ;
             IncrementalWeights = gaussian_mixture_densities(Y(:,t),StateMuPrior,StateSqrtPPrior,StateWeightsPrior,...
                                                                    StateMuPost,StateSqrtPPost,StateWeightsPost,...
-                                                                   StateParticles,H,const_lik,weights,weights_c,ReducedForm,DynareOptions) ;
+                                                                   StateParticles,H,const_lik,weights,weights_c,ReducedForm,ThreadsOptions) ;
             SampleWeights(i) = sum(StateWeightsPost(i)*weights.*IncrementalWeights) ;
         end
         SumSampleWeights = sum(SampleWeights) ;
@@ -183,7 +183,7 @@ for t=1:sample_size
         SampleWeights = SampleWeights./SumSampleWeights ;
         [ras,SortedRandomIndx] = sort(rand(1,Gsecond));
         SortedRandomIndx = SortedRandomIndx(1:G);
-        indx = index_resample(0,SampleWeights,DynareOptions) ;
+        indx = index_resample(0,SampleWeights,ParticleOptions) ;
         indx = indx(SortedRandomIndx) ;
         StateMu = StateMuPost(:,indx);
         StateSqrtP = StateSqrtPPost(:,:,indx);
@@ -195,7 +195,7 @@ for t=1:sample_size
         IncrementalWeights = gaussian_mixture_densities(Y(:,t),StateMuPrior,StateSqrtPPrior,StateWeightsPrior,...
                                                                StateMuPost,StateSqrtPPost,StateWeightsPost,...
                                                                StateParticles,H,const_lik,1/number_of_particles,...
-                                                               1/number_of_particles,ReducedForm,DynareOptions) ;
+                                                               1/number_of_particles,ReducedForm,ThreadsOptions) ;
         % calculate importance weights of particles
         SampleWeights = SampleWeights.*IncrementalWeights ;
         SumSampleWeights = sum(SampleWeights,1) ;
@@ -205,13 +205,13 @@ for t=1:sample_size
         %estimate(t,:,1) = SampleWeights*StateParticles' ;
         % Resampling if needed of required
         Neff = 1/sum(bsxfun(@power,SampleWeights,2)) ;
-        if (DynareOptions.particle.resampling.status.generic && Neff<.5*sample_size) || DynareOptions.particle.resampling.status.systematic
+        if (ParticleOptions.resampling.status.generic && Neff<.5*sample_size) || ParticleOptions.resampling.status.systematic
             ks = ks + 1 ;
-            StateParticles = resample(StateParticles',SampleWeights,DynareOptions)' ;
+            StateParticles = resample(StateParticles',SampleWeights,ParticleOptions)' ;
             StateVectorMean = mean(StateParticles,2) ;
             StateVectorVarianceSquareRoot = reduced_rank_cholesky( (StateParticles*StateParticles')/number_of_particles - StateVectorMean*(StateVectorMean') )';
             SampleWeights = 1/number_of_particles ;
-        elseif DynareOptions.particle.resampling.status.none
+        elseif ParticleOptions.resampling.status.none
             StateVectorMean = StateParticles*sampleWeights ;
             temp = sqrt(SampleWeights').*StateParticles ;
             StateVectorVarianceSquareRoot = reduced_rank_cholesky( temp*temp' - StateVectorMean*(StateVectorMean') )';

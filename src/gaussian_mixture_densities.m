@@ -1,7 +1,6 @@
 function  IncrementalWeights = gaussian_mixture_densities(obs,StateMuPrior,StateSqrtPPrior,StateWeightsPrior,...
                                                               StateMuPost,StateSqrtPPost,StateWeightsPost,...
-                                                              StateParticles,H,normconst,weigths1,weigths2,ReducedForm,DynareOptions)
-                                                                  
+                                                              StateParticles,H,normconst,weigths1,weigths2,ReducedForm,ThreadsOptions)                                                                 
 %
 % Elements to calculate the importance sampling ratio 
 %
@@ -46,7 +45,7 @@ prior = prior' ;
 [ras,ras,proposal] = probability(StateMuPost,StateSqrtPPost,StateWeightsPost,StateParticles) ;			
 proposal = proposal' ;
 % Compute the density of the current observation conditionally to each particle
-yt_t_1_i = measurement_equations(StateParticles,ReducedForm,DynareOptions) ;
+yt_t_1_i = measurement_equations(StateParticles,ReducedForm,ThreadsOptions) ;
 eta_t_i = bsxfun(@minus,obs,yt_t_1_i)' ;
 yt_t_1 = sum(yt_t_1_i*weigths1,2) ;
 tmp = bsxfun(@minus,yt_t_1_i,yt_t_1) ;

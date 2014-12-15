@@ -2,7 +2,7 @@ function [StateMuPrior,StateSqrtPPrior,StateWeightsPrior,StateMuPost,StateSqrtPP
                 gaussian_mixture_filter_bank(ReducedForm,obs,StateMu,StateSqrtP,StateWeights,...
                                                                 StructuralShocksMu,StructuralShocksSqrtP,StructuralShocksWeights,...
                                                                 ObservationShocksMu,ObservationShocksSqrtP,ObservationShocksWeights,...
-                                                                H,H_lower_triangular_cholesky,normfactO,DynareOptions) 
+                                                                H,H_lower_triangular_cholesky,normfactO,ParticleOptions,ThreadsOptions) 
 %
 % Computes the proposal with a gaussian approximation for importance
 % sampling 
@@ -79,11 +79,11 @@ end
 
 numb = number_of_state_variables+number_of_structural_innovations ;
 
-if DynareOptions.particle.proposal_approximation.cubature
+if ParticleOptions.proposal_approximation.cubature
     [nodes3,weights3] = spherical_radial_sigma_points(numb);
     weights_c3 = weights3;
-elseif DynareOptions.particle.proposal_approximation.unscented
-    [nodes3,weights3,weights_c3] = unscented_sigma_points(numb,DynareOptions);
+elseif ParticleOptions.proposal_approximation.unscented
+    [nodes3,weights3,weights_c3] = unscented_sigma_points(numb,ParticleOptions);
 else
     error('Estimation: This approximation for the proposal is not implemented or unknown!')
 end
@@ -91,11 +91,11 @@ end
 epsilon =  bsxfun(@plus,StructuralShocksSqrtP*nodes3(:,number_of_state_variables+1:number_of_state_variables+number_of_structural_innovations)',StructuralShocksMu) ;
 StateVectors = bsxfun(@plus,StateSqrtP*nodes3(:,1:number_of_state_variables)',StateMu);
 yhat = bsxfun(@minus,StateVectors,state_variables_steady_state);
-tmp = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,DynareOptions.threads.local_state_space_iteration_2);
+tmp = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,ThreadsOptions.local_state_space_iteration_2);
 PredictedStateMean = tmp(mf0,:)*weights3;
 PredictedObservedMean = tmp(mf1,:)*weights3;
 
-if DynareOptions.particle.proposal_approximation.cubature
+if ParticleOptions.proposal_approximation.cubature
     PredictedStateMean = sum(PredictedStateMean,2);
     PredictedObservedMean = sum(PredictedObservedMean,2);
     dState = (bsxfun(@minus,tmp(mf0,:),PredictedStateMean)').*sqrt(weights3);
