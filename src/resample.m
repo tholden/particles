@@ -1,5 +1,7 @@
-function resampled_particles = resample(particles,weights,ParticleOptions)
+function resampled_output = resample(particles,weights,ParticleOptions)
 % Resamples particles.
+% if particles = 0, returns the resampling index (except for smooth resampling)
+% Otherwise, returns the resampled particles set.
 
 %@info:
 %! @deftypefn {Function File} {@var{indx} =} resample (@var{weights}, @var{method})
@@ -55,19 +57,22 @@ defaultmethod = 1; % For residual based method set this variable equal to 0.
 
 if defaultmethod
     if ParticleOptions.resampling.method.kitagawa
-        resampled_particles = traditional_resampling(particles,weights,rand);
+        resampled_output = traditional_resampling(particles,weights,rand);
     elseif ParticleOptions.resampling.method.stratified
-        resampled_particles = traditional_resampling(particles,weights,rand(size(weights)));
+        resampled_output = traditional_resampling(particles,weights,rand(size(weights)));
     elseif ParticleOptions.resampling.method.smooth
-        resampled_particles = multivariate_smooth_resampling(particles,weights);
+        if particles==0
+            error('Particle = 0 is incompatible with this resampling method!')
+        end
+        resampled_output = multivariate_smooth_resampling(particles,weights);
     else
-        error('Unknow sampling method!')
+        error('Unknown sampling method!')
     end
 else
     if ParticleOptions.resampling.method.kitagawa
-        resampled_particles = residual_resampling(particles,weights,rand);
+        resampled_output = residual_resampling(particles,weights,rand);
     elseif ParticleOptions.resampling.method.stratified
-        resampled_particles = residual_resampling(particles,weights,rand(size(weights)));
+        resampled_output = residual_resampling(particles,weights,rand(size(weights)));
     else
         error('Unknown sampling method!')
     end
