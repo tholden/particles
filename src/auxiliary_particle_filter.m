@@ -98,21 +98,32 @@ else
 end
 StateVectors = tmp(mf0,:) ;
 
-%[nodes,nodes_weights] = spherical_radial_sigma_points(number_of_structural_innovations) ;
-[nodes,nodes_weights,nodes_weights_c] = unscented_sigma_points(number_of_structural_innovations,ParticleOptions);
+if ParticleOptions.proposal_approximation.cubature 
+    [nodes,nodes_weights] = spherical_radial_sigma_points(number_of_structural_innovations) ;
+    nodes_weights = ones(size(nodes,1),1)*nodes_weights ;
+elseif ParticleOptions.proposal_approximation.unscented
+    [nodes,nodes_weights,nodes_weights_c] = unscented_sigma_points(number_of_structural_innovations,ParticleOptions);
+else
+    error('Estimation: This approximation for the proposal is not implemented or unknown!')
+end    
 nodes = Q_lower_triangular_cholesky*nodes ;
 
 for t=1:sample_size
     yhat = bsxfun(@minus,StateVectors,state_variables_steady_state);
-%    if pruning
-%        yhat_ = bsxfun(@minus,StateVectors_,state_variables_steady_state);
-%        [tmp, tmp_] = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,ThreadsOptions.local_state_space_iteration_2);
-%    else
-%        tmp = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,ThreadsOptions.local_state_space_iteration_2);
-%    end
-    tmp = 0 ;
-    for i=1:size(nodes)
-        tmp = tmp + nodes_weights*local_state_space_iteration_2(yhat,nodes(i,:)*ones(1,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,ThreadsOptions.local_state_space_iteration_2);
+    if pruning
+        yhat_ = bsxfun(@minus,StateVectors_,state_variables_steady_state);
+        tmp = 0 ;
+        tmp_ = 0 ;
+        for i=1:size(nodes)
+            [tmp1, tmp1_] = local_state_space_iteration_2(yhat,nodes(i,:)*ones(1,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,ThreadsOptions.local_state_space_iteration_2);
+            tmp = tmp + nodes_weights(i)*tmp1 ;
+            tmp_ = tmp_ + nodes_weights(i)*tmp1_ ;
+        end
+    else
+        tmp = 0 ;
+        for i=1:size(nodes)
+            tmp = tmp + nodes_weights(i)*local_state_space_iteration_2(yhat,nodes(i,:)*ones(1,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,ThreadsOptions.local_state_space_iteration_2);
+        end
     end
     PredictedObservedMean = weights*(tmp(mf1,:)');
     PredictionError = bsxfun(@minus,Y(:,t),tmp(mf1,:));
@@ -128,7 +139,6 @@ for t=1:sample_size
         yhat_ = yhat_(:,indx) ;
     end
     yhat = yhat(:,indx) ;
-    %wtilde = wtilde(indx) ;
     factor = weights(indx)./tau_tilde(indx) ;
     epsilon = Q_lower_triangular_cholesky*randn(number_of_structural_innovations,number_of_particles);
     if pruning
@@ -143,7 +153,6 @@ for t=1:sample_size
     dPredictedObservedMean = bsxfun(@minus,tmp(mf1,:),PredictedObservedMean);
     PredictedObservedVariance = (dPredictedObservedMean*dPredictedObservedMean')/number_of_particles + H;
     lnw = exp(-.5*(const_lik+log(det(PredictedObservedVariance))+sum(PredictionError.*(PredictedObservedVariance\PredictionError),1)));
-    %wtilde = lnw./wtilde;
     wtilde = lnw.*factor ;
     weights = wtilde/sum(wtilde);
 end
