@@ -120,7 +120,8 @@ for t=1:sample_size
         yhat_ = yhat_(:,indx) ;
     end
     yhat = yhat(:,indx) ;
-    wtilde = wtilde(indx) ;
+    %wtilde = wtilde(indx) ;
+    factor = weights(indx)./tau_tilde(indx) ;
     epsilon = Q_lower_triangular_cholesky*randn(number_of_structural_innovations,number_of_particles);
     if pruning
         [tmp, tmp_] = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,ThreadsOptions.local_state_space_iteration_2);
@@ -134,7 +135,8 @@ for t=1:sample_size
     dPredictedObservedMean = bsxfun(@minus,tmp(mf1,:),PredictedObservedMean);
     PredictedObservedVariance = (dPredictedObservedMean*dPredictedObservedMean')/number_of_particles + H;
     lnw = exp(-.5*(const_lik+log(det(PredictedObservedVariance))+sum(PredictionError.*(PredictedObservedVariance\PredictionError),1)));
-    wtilde = lnw./wtilde;
+    %wtilde = lnw./wtilde;
+    wtilde = lnw.*factor ;
     weights = wtilde/sum(wtilde);
 end
 
