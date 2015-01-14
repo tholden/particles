@@ -146,19 +146,19 @@ for t=1:sample_size
         %VarSampleWeights = VarSampleWeights*VarSampleWeights'/(number_of_particles-1) ;
         lik(t) = log(SumSampleWeights) ; %+ .5*VarSampleWeights/(number_of_particles*(SumSampleWeights*SumSampleWeights)) ;
         SampleWeights = SampleWeights./SumSampleWeights ;
-        Neff = neff(SampleWeights) ;
-        if (Neff<0.5*sample_size && ParticleOptions.resampling.status.generic) || ParticleOptions.resampling.status.systematic
-            ks = ks + 1 ;
-            StateParticles = resample(StateParticles',SampleWeights,ParticleOptions)' ;
-            StateVectorMean = mean(StateParticles,2) ;
-            StateVectorVarianceSquareRoot = reduced_rank_cholesky( (StateParticles*StateParticles')/(number_of_particles-1) - StateVectorMean*(StateVectorMean') )';
-            SampleWeights = 1/number_of_particles ;
-        elseif ParticleOptions.resampling.status.none
+%        Neff = neff(SampleWeights) ;
+%        if (Neff<0.5*sample_size && ParticleOptions.resampling.status.generic) || ParticleOptions.resampling.status.systematic
+%            ks = ks + 1 ;
+%            StateParticles = resample(StateParticles',SampleWeights,ParticleOptions)' ;
+%            StateVectorMean = mean(StateParticles,2) ;
+%            StateVectorVarianceSquareRoot = reduced_rank_cholesky( (StateParticles*StateParticles')/(number_of_particles-1) - StateVectorMean*(StateVectorMean') )';
+%            SampleWeights = 1/number_of_particles ;
+%        elseif ParticleOptions.resampling.status.none
             StateVectorMean = StateParticles*SampleWeights ;
             temp = bsxfun(@minus,StateParticles,StateVectorMean) ;
             StateVectorVarianceSquareRoot = reduced_rank_cholesky( bsxfun(@times,SampleWeights',temp)*temp' )';
             %disp(StateVectorVarianceSquareRoot)
-        end
+%        end
     end
 end
 
