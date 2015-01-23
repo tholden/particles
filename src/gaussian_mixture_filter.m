@@ -3,7 +3,6 @@ function [LIK,lik] = gaussian_mixture_filter(ReducedForm,Y,start,ParticleOptions
 % variables distributions with gaussian mixtures. Gaussian Mixture allows reproducing
 % a wide variety of generalized distributions (when multimodal for instance).
 % Each gaussian distribution is obtained whether
-%   - with a Smolyak quadrature à la Kronrod & Paterson (Heiss & Winschel 2010, Winschel & Kratzig 2010).
 %   - with a radial-spherical cubature
 %   - with scaled unscented sigma-points
 % A Sparse grid Kalman Filter is implemented on each component of the mixture,
@@ -72,8 +71,8 @@ if isempty(init_flag)
   number_of_observed_variables = length(mf1);
   number_of_structural_innovations = length(ReducedForm.Q);
   G = ParticleOptions.mixture_state_variables;           % number of GM components in state
-  I = ParticleOptions.mixture_structural_shocks ;        % number of GM components in structural noise
-  J = ParticleOptions.mixture_measurement_shocks ;       % number of GM components in observation noise
+  I = 1 ; %ParticleOptions.mixture_structural_shocks ;        % number of GM components in structural noise
+  J = 1 ; %ParticleOptions.mixture_measurement_shocks ;       % number of GM components in observation noise
   Gprime = G*I ;
   Gsecond = G*I*J ;
   number_of_particles = ParticleOptions.number_of_particles;
@@ -116,8 +115,9 @@ Q_lower_triangular_cholesky = reduced_rank_cholesky(Q)';
 StateWeights = ones(1,G)/G ;
 StateMu = ReducedForm.StateVectorMean*ones(1,G) ;
 StateSqrtP = zeros(number_of_state_variables,number_of_state_variables,G) ;
+temp = reduced_rank_cholesky(ReducedForm.StateVectorVariance)' ;
 for g=1:G
-  StateSqrtP(:,:,g) = reduced_rank_cholesky(ReducedForm.StateVectorVariance)' ;
+  StateSqrtP(:,:,g) = temp ;
 end
 
 StructuralShocksWeights = ones(1,I)/I ;
@@ -197,25 +197,26 @@ for t=1:sample_size
                                                                StateParticles,H,const_lik,1/number_of_particles,...
                                                                1/number_of_particles,ReducedForm,ThreadsOptions) ;
         % calculate importance weights of particles
-        SampleWeights = SampleWeights.*IncrementalWeights ;
+%        SampleWeights = SampleWeights.*IncrementalWeights ;
+        SampleWeights = IncrementalWeights/number_of_particles ;
         SumSampleWeights = sum(SampleWeights,1) ;
         SampleWeights = SampleWeights./SumSampleWeights ;
         lik(t) = log(SumSampleWeights) ;
         % First possible state point estimates
         %estimate(t,:,1) = SampleWeights*StateParticles' ;
         % Resampling if needed of required
-        Neff = 1/sum(bsxfun(@power,SampleWeights,2)) ;
-        if (ParticleOptions.resampling.status.generic && Neff<.5*sample_size) || ParticleOptions.resampling.status.systematic
-            ks = ks + 1 ;
-            StateParticles = resample(StateParticles',SampleWeights,ParticleOptions)' ;
-            StateVectorMean = mean(StateParticles,2) ;
-            StateVectorVarianceSquareRoot = reduced_rank_cholesky( (StateParticles*StateParticles')/number_of_particles - StateVectorMean*(StateVectorMean') )';
-            SampleWeights = 1/number_of_particles ;
-        elseif ParticleOptions.resampling.status.none
-            StateVectorMean = StateParticles*sampleWeights ;
-            temp = sqrt(SampleWeights').*StateParticles ;
-            StateVectorVarianceSquareRoot = reduced_rank_cholesky( temp*temp' - StateVectorMean*(StateVectorMean') )';
-        end
+%        Neff = neff(SampleWeights) ;
+%        if (ParticleOptions.resampling.status.generic && Neff<.5*sample_size) || ParticleOptions.resampling.status.systematic
+%            ks = ks + 1 ;
+%            StateParticles = resample(StateParticles',SampleWeights,ParticleOptions)' ;
+%            StateVectorMean = mean(StateParticles,2) ;
+%            StateVectorVarianceSquareRoot = reduced_rank_cholesky( (StateParticles*StateParticles')/number_of_particles - StateVectorMean*(StateVectorMean') )';
+%            SampleWeights = 1/number_of_particles ;
+%        elseif ParticleOptions.resampling.status.none
+%            StateVectorMean = StateParticles*sampleWeights ;
+%            temp = sqrt(SampleWeights').*StateParticles ;
+%            StateVectorVarianceSquareRoot = reduced_rank_cholesky( temp*temp' - StateVectorMean*(StateVectorMean') )';
+%        end
         % Use the information from particles to update the gaussian mixture on state variables
         [StateMu,StateSqrtP,StateWeights] = fit_gaussian_mixture(StateParticles,StateMu,StateSqrtP,StateWeights,0.001,10,1) ;
         %estimate(t,:,3) = StateWeights*StateMu' ;
