@@ -52,8 +52,7 @@ function [LIK,lik] = gaussian_mixture_filter(ReducedForm,Y,start,ParticleOptions
 % You should have received a copy of the GNU General Public License
 % along with Dynare.  If not, see <http://www.gnu.org/licenses/>.
 
-
-persistent init_flag mf0 mf1 Gprime Gsecond
+persistent init_flag mf0 mf1
 persistent nodes weights weights_c I J G number_of_particles
 persistent sample_size number_of_state_variables number_of_observed_variables number_of_structural_innovations
 
@@ -71,15 +70,9 @@ if isempty(init_flag)
   number_of_observed_variables = length(mf1);
   number_of_structural_innovations = length(ReducedForm.Q);
   G = ParticleOptions.mixture_state_variables;           % number of GM components in state
-  I = 1 ; %ParticleOptions.mixture_structural_shocks ;        % number of GM components in structural noise
-  J = 1 ; %ParticleOptions.mixture_measurement_shocks ;       % number of GM components in observation noise
-  Gprime = G*I ;
-  Gsecond = G*I*J ;
   number_of_particles = ParticleOptions.number_of_particles;
   init_flag = 1;
 end
-
-SampleWeights = ones(Gsecond,1)/Gsecond ;
 
 % compute gaussian quadrature nodes and weights on states and shocks
 if isempty(nodes)
@@ -111,28 +104,53 @@ else
 end
 Q_lower_triangular_cholesky = reduced_rank_cholesky(Q)';
 
-% Initialize all matrices
+% Initialize mixtures 
 StateWeights = ones(1,G)/G ;
-StateMu = ReducedForm.StateVectorMean*ones(1,G) ;
+StateMu = ReducedForm.StateVectorMean ;
 StateSqrtP = zeros(number_of_state_variables,number_of_state_variables,G) ;
 temp = reduced_rank_cholesky(ReducedForm.StateVectorVariance)' ;
+StateMu = bsxfun(@plus,StateMu,bsxfun(@times,diag(temp),(-(G-1)/2:1:(G-1)/2))/10) ;
 for g=1:G
   StateSqrtP(:,:,g) = temp ;
 end
 
-StructuralShocksWeights = ones(1,I)/I ;
-StructuralShocksMu = zeros(number_of_structural_innovations,I) ;
+if ParticleOptions.proposal_approximation.cubature
+    [StructuralShocksMu,StructuralShocksWeights] = spherical_radial_sigma_points(number_of_structural_innovations);
+    StructuralShocksWeights = ones(size(StructuralShocksMu,1),1)*StructuralShocksWeights ;
+elseif ParticleOptions.proposal_approximation.unscented
+    [StructuralShocksMu,StructuralShocksWeights,raf] = unscented_sigma_points(number_of_structural_innovations,ParticleOptions);
+else
+    if ~ParticleOptions.distribution_approximation.montecarlo
+        error('Estimation: This approximation for the proposal is not implemented or unknown!')
+    end
+end
+I = size(StructuralShocksWeights,1) ;
+StructuralShocksMu = Q_lower_triangular_cholesky*(StructuralShocksMu') ;
 StructuralShocksSqrtP = zeros(number_of_structural_innovations,number_of_structural_innovations,I) ;
 for i=1:I
   StructuralShocksSqrtP(:,:,i) = Q_lower_triangular_cholesky ;
 end
 
-ObservationShocksWeights  = ones(1,J)/J ;
-ObservationShocksMu = zeros(number_of_observed_variables,J) ;
+if ParticleOptions.proposal_approximation.cubature
+    [ObservationShocksMu,ObservationShocksWeights] = spherical_radial_sigma_points(number_of_observed_variables);
+    ObservationShocksWeights = ones(size(ObservationShocksMu,1),1)*ObservationShocksWeights;
+elseif ParticleOptions.proposal_approximation.unscented
+    [ObservationShocksMu,ObservationShocksWeights,raf] = unscented_sigma_points(number_of_observed_variables,ParticleOptions);
+else
+    if ~ParticleOptions.distribution_approximation.montecarlo
+        error('Estimation: This approximation for the proposal is not implemented or unknown!')
+    end
+end
+J = size(ObservationShocksWeights,1) ;
+ObservationShocksMu = H_lower_triangular_cholesky*(ObservationShocksMu') ;
 ObservationShocksSqrtP = zeros(number_of_observed_variables,number_of_observed_variables,J) ;
 for j=1:J
   ObservationShocksSqrtP(:,:,j) = H_lower_triangular_cholesky ;
 end
+
+Gprime = G*I ;
+Gsecond = G*I*J ;
+SampleWeights = ones(Gsecond,1)/Gsecond ;
 
 StateWeightsPrior = zeros(1,Gprime) ;
 StateMuPrior = zeros(number_of_state_variables,Gprime) ;
@@ -142,10 +160,8 @@ StateWeightsPost = zeros(1,Gsecond) ;
 StateMuPost = zeros(number_of_state_variables,Gsecond) ;
 StateSqrtPPost = zeros(number_of_state_variables,number_of_state_variables,Gsecond) ;
 
-%estimate = zeros(sample_size,number_of_state_variables,3) ;
 const_lik = (2*pi)^(.5*number_of_observed_variables) ;
 
-ks = 0 ;
 lik  = NaN(sample_size,1);
 LIK  = NaN;
 for t=1:sample_size
@@ -154,13 +170,13 @@ for t=1:sample_size
     for i=1:I
         for j=1:J
             for g=1:G ;
-                a = g + (j-1)*G ;
-                b = a + (i-1)*Gprime ;
-                [StateMuPrior(:,a),StateSqrtPPrior(:,:,a),StateWeightsPrior(1,a),...
-                 StateMuPost(:,b),StateSqrtPPost(:,:,b),StateWeightsPost(1,b)] =...
-                 gaussian_mixture_filter_bank(ReducedForm,Y(:,t),StateMu(:,g),StateSqrtP(:,:,g),StateWeights(1,g),...
-                                                                 StructuralShocksMu(:,i),StructuralShocksSqrtP(:,:,i),StructuralShocksWeights(1,i),...
-                                                                 ObservationShocksMu(:,j),ObservationShocksSqrtP(:,:,j),ObservationShocksWeights(1,j),...
+                gprime = g + (i-1)*G ;
+                gsecond = gprime + (j-1)*Gprime ;
+                [StateMuPrior(:,gprime),StateSqrtPPrior(:,:,gprime),StateWeightsPrior(1,gprime),...
+                 StateMuPost(:,gsecond),StateSqrtPPost(:,:,gsecond),StateWeightsPost(1,gsecond)] =...
+                 gaussian_mixture_filter_bank(ReducedForm,Y(:,t),StateMu(:,g),StateSqrtP(:,:,g),StateWeights(g),...
+                                                                 StructuralShocksMu(:,i),StructuralShocksSqrtP(:,:,i),StructuralShocksWeights(i),...
+                                                                 ObservationShocksMu(:,j),ObservationShocksSqrtP(:,:,j),ObservationShocksWeights(j),...
                                                                  H,H_lower_triangular_cholesky,const_lik,ParticleOptions,ThreadsOptions) ;
             end
         end
@@ -197,29 +213,11 @@ for t=1:sample_size
                                                                StateParticles,H,const_lik,1/number_of_particles,...
                                                                1/number_of_particles,ReducedForm,ThreadsOptions) ;
         % calculate importance weights of particles
-%        SampleWeights = SampleWeights.*IncrementalWeights ;
         SampleWeights = IncrementalWeights/number_of_particles ;
         SumSampleWeights = sum(SampleWeights,1) ;
         SampleWeights = SampleWeights./SumSampleWeights ;
         lik(t) = log(SumSampleWeights) ;
-        % First possible state point estimates
-        %estimate(t,:,1) = SampleWeights*StateParticles' ;
-        % Resampling if needed of required
-%        Neff = neff(SampleWeights) ;
-%        if (ParticleOptions.resampling.status.generic && Neff<.5*sample_size) || ParticleOptions.resampling.status.systematic
-%            ks = ks + 1 ;
-%            StateParticles = resample(StateParticles',SampleWeights,ParticleOptions)' ;
-%            StateVectorMean = mean(StateParticles,2) ;
-%            StateVectorVarianceSquareRoot = reduced_rank_cholesky( (StateParticles*StateParticles')/number_of_particles - StateVectorMean*(StateVectorMean') )';
-%            SampleWeights = 1/number_of_particles ;
-%        elseif ParticleOptions.resampling.status.none
-%            StateVectorMean = StateParticles*sampleWeights ;
-%            temp = sqrt(SampleWeights').*StateParticles ;
-%            StateVectorVarianceSquareRoot = reduced_rank_cholesky( temp*temp' - StateVectorMean*(StateVectorMean') )';
-%        end
-        % Use the information from particles to update the gaussian mixture on state variables
         [StateMu,StateSqrtP,StateWeights] = fit_gaussian_mixture(StateParticles,StateMu,StateSqrtP,StateWeights,0.001,10,1) ;
-        %estimate(t,:,3) = StateWeights*StateMu' ;
     end
 end
 

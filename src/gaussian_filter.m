@@ -3,28 +3,24 @@ function [LIK,lik] = gaussian_filter(ReducedForm, Y, start, ParticleOptions, Thr
 % predictive (prior) and filtered (posterior) densities for state variables
 % by gaussian distributions.
 % Gaussian approximation is done by:
-% - a Kronrod-Paterson gaussian quadrature with a limited number of nodes.
-% Multidimensional quadrature is obtained by the Smolyak operator (ref: Winschel & Kratzig, 2010).
-% - a spherical-radial cubature (ref: Arasaratnam & Haykin, 2008,2009).
-% - a scaled unscented transform cubature (ref: )
+% - a spherical-radial cubature (ref: Arasaratnam & Haykin, 2009).
+% - a scaled unscented transform cubature (ref: Julier & Uhlmann 1995)
 % - Monte-Carlo draws from a multivariate gaussian distribution.
 % First and second moments of prior and posterior state densities are computed
 % from the resulting nodes/particles and allows to generate new distributions at the
 % following observation.
-% => The use of nodes is much faster than Monte-Carlo Gaussian particle and standard particles
-% filters since it treats a lesser number of particles and there is no need
+% Pros: The use of nodes is much faster than Monte-Carlo Gaussian particle and standard particles
+% filters since it treats a lesser number of particles. Furthermore, in all cases, there is no need
 % of resampling.
-% However, estimations may reveal biaised if the model is truly non-gaussian
+% Cons: estimations may be biaised if the model is truly non-gaussian
 % since predictive and filtered densities are unimodal.
 %
 % INPUTS
-%    reduced_form_model     [structure] Matlab's structure describing the reduced form model.
-%                                       reduced_form_model.measurement.H   [double]   (pp x pp) variance matrix of measurement errors.
-%                                       reduced_form_model.state.Q         [double]   (qq x qq) variance matrix of state errors.
-%                                       reduced_form_model.state.dr        [structure] output of resol.m.
-%    Y                      [double]    pp*smpl matrix of (detrended) data, where pp is the maximum number of observed variables.
-%    start                  [integer]   scalar, likelihood evaluation starts at 'start'.
-%    smolyak_accuracy       [integer]   scalar.
+%    Reduced_Form     [structure] Matlab's structure describing the reduced form model.
+%    Y                [double]    matrix of original observed variables.
+%    start            [double]    structural parameters.
+%    ParticleOptions  [structure] Matlab's structure describing options concerning particle filtering.
+%    ThreadsOptions   [structure] Matlab's structure.
 %
 % OUTPUTS
 %    LIK        [double]    scalar, likelihood
@@ -34,7 +30,7 @@ function [LIK,lik] = gaussian_filter(ReducedForm, Y, start, ParticleOptions, Thr
 %
 % NOTES
 %   The vector "lik" is used to evaluate the jacobian of the likelihood.
-% Copyright (C) 2009-2013 Dynare Team
+% Copyright (C) 2009-2015 Dynare Team
 %
 % This file is part of Dynare.
 %
@@ -110,12 +106,7 @@ const_lik = (2*pi)^(number_of_observed_variables/2) ;
 lik  = NaN(sample_size,1);
 LIK  = NaN;
 
-SampleWeights = 1/number_of_particles ;
-ks = 0 ;
-%Estimate = zeros(number_of_state_variables,sample_size) ;
-%V_Estimate = zeros(number_of_state_variables,number_of_state_variables,sample_size) ;
 for t=1:sample_size
-    % build the proposal
     [PredictedStateMean,PredictedStateVarianceSquareRoot,StateVectorMean,StateVectorVarianceSquareRoot] = ...
         gaussian_filter_bank(ReducedForm,Y(:,t),StateVectorMean,StateVectorVarianceSquareRoot,Q_lower_triangular_cholesky,H_lower_triangular_cholesky,H,ParticleOptions,ThreadsOptions) ;
     if ParticleOptions.distribution_approximation.cubature || ParticleOptions.distribution_approximation.unscented
@@ -126,40 +117,21 @@ for t=1:sample_size
                                         PredictedStateVarianceSquareRoot,StateParticles,H,const_lik,...
                                         weights2,weights_c2,ReducedForm,ThreadsOptions) ;
         SampleWeights = weights2.*IncrementalWeights ;
-        SumSampleWeights = sum(SampleWeights) ;
-        lik(t) = log(SumSampleWeights) ;
-        SampleWeights = SampleWeights./SumSampleWeights ;
-        StateVectorMean = StateParticles*SampleWeights ;
-        temp = bsxfun(@minus,StateParticles,StateVectorMean) ;
-        StateVectorVarianceSquareRoot = reduced_rank_cholesky( bsxfun(@times,SampleWeights',temp)*temp' )';
-    else % Monte-Carlo draws
+    else 
         StateParticles = bsxfun(@plus,StateVectorVarianceSquareRoot*randn(state_variance_rank,number_of_particles),StateVectorMean) ;
         IncrementalWeights = ...
                     gaussian_densities(Y(:,t),StateVectorMean,...
                                         StateVectorVarianceSquareRoot,PredictedStateMean,...
                                         PredictedStateVarianceSquareRoot,StateParticles,H,const_lik,...
                                         1/number_of_particles,1/number_of_particles,ReducedForm,ThreadsOptions) ;
-        %SampleWeights = SampleWeights.*IncrementalWeights ;
         SampleWeights = IncrementalWeights/number_of_particles ;
-        SumSampleWeights = sum(SampleWeights) ;
-        %VarSampleWeights = IncrementalWeights-SumSampleWeights ;
-        %VarSampleWeights = VarSampleWeights*VarSampleWeights'/(number_of_particles-1) ;
-        lik(t) = log(SumSampleWeights) ; %+ .5*VarSampleWeights/(number_of_particles*(SumSampleWeights*SumSampleWeights)) ;
-        SampleWeights = SampleWeights./SumSampleWeights ;
-%        Neff = neff(SampleWeights) ;
-%        if (Neff<0.5*sample_size && ParticleOptions.resampling.status.generic) || ParticleOptions.resampling.status.systematic
-%            ks = ks + 1 ;
-%            StateParticles = resample(StateParticles',SampleWeights,ParticleOptions)' ;
-%            StateVectorMean = mean(StateParticles,2) ;
-%            StateVectorVarianceSquareRoot = reduced_rank_cholesky( (StateParticles*StateParticles')/(number_of_particles-1) - StateVectorMean*(StateVectorMean') )';
-%            SampleWeights = 1/number_of_particles ;
-%        elseif ParticleOptions.resampling.status.none
-            StateVectorMean = StateParticles*SampleWeights ;
-            temp = bsxfun(@minus,StateParticles,StateVectorMean) ;
-            StateVectorVarianceSquareRoot = reduced_rank_cholesky( bsxfun(@times,SampleWeights',temp)*temp' )';
-            %disp(StateVectorVarianceSquareRoot)
-%        end
     end
+    SumSampleWeights = sum(SampleWeights) ;
+    lik(t) = log(SumSampleWeights) ;
+    SampleWeights = SampleWeights./SumSampleWeights ;
+    StateVectorMean = StateParticles*SampleWeights ;
+    temp = bsxfun(@minus,StateParticles,StateVectorMean) ;
+    StateVectorVarianceSquareRoot = reduced_rank_cholesky( bsxfun(@times,SampleWeights',temp)*temp' )';
 end
 
 LIK = -sum(lik(start:end));
