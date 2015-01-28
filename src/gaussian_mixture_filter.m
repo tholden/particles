@@ -111,7 +111,7 @@ StateSqrtP = zeros(number_of_state_variables,number_of_state_variables,G) ;
 temp = reduced_rank_cholesky(ReducedForm.StateVectorVariance)' ;
 StateMu = bsxfun(@plus,StateMu,bsxfun(@times,diag(temp),(-(G-1)/2:1:(G-1)/2))/10) ;
 for g=1:G
-  StateSqrtP(:,:,g) = temp ;
+  StateSqrtP(:,:,g) = temp/sqrt(G) ;
 end
 
 if ParticleOptions.proposal_approximation.cubature
@@ -128,7 +128,7 @@ I = size(StructuralShocksWeights,1) ;
 StructuralShocksMu = Q_lower_triangular_cholesky*(StructuralShocksMu') ;
 StructuralShocksSqrtP = zeros(number_of_structural_innovations,number_of_structural_innovations,I) ;
 for i=1:I
-  StructuralShocksSqrtP(:,:,i) = Q_lower_triangular_cholesky ;
+  StructuralShocksSqrtP(:,:,i) = Q_lower_triangular_cholesky/sqrt(StructuralShocksWeights(i)) ;
 end
 
 if ParticleOptions.proposal_approximation.cubature
@@ -145,7 +145,7 @@ J = size(ObservationShocksWeights,1) ;
 ObservationShocksMu = H_lower_triangular_cholesky*(ObservationShocksMu') ;
 ObservationShocksSqrtP = zeros(number_of_observed_variables,number_of_observed_variables,J) ;
 for j=1:J
-  ObservationShocksSqrtP(:,:,j) = H_lower_triangular_cholesky ;
+  ObservationShocksSqrtP(:,:,j) = H_lower_triangular_cholesky/sqrt(ObservationShocksWeights(j)) ;
 end
 
 Gprime = G*I ;
@@ -199,7 +199,7 @@ for t=1:sample_size
         SampleWeights = SampleWeights./SumSampleWeights ;
         [ras,SortedRandomIndx] = sort(rand(1,Gsecond));
         SortedRandomIndx = SortedRandomIndx(1:G);
-        indx = index_resample(0,SampleWeights,ParticleOptions) ;
+        indx = resample(0,SampleWeights,ParticleOptions) ;
         indx = indx(SortedRandomIndx) ;
         StateMu = StateMuPost(:,indx);
         StateSqrtP = StateSqrtPPost(:,:,indx);
@@ -207,12 +207,10 @@ for t=1:sample_size
     else
         % Sample particle in the proposal distribution, ie the posterior state GM
         StateParticles = importance_sampling(StateMuPost,StateSqrtPPost,StateWeightsPost',number_of_particles) ;
-        % Compute prior, proposal and likelihood of particles
         IncrementalWeights = gaussian_mixture_densities(Y(:,t),StateMuPrior,StateSqrtPPrior,StateWeightsPrior,...
                                                                StateMuPost,StateSqrtPPost,StateWeightsPost,...
                                                                StateParticles,H,const_lik,1/number_of_particles,...
                                                                1/number_of_particles,ReducedForm,ThreadsOptions) ;
-        % calculate importance weights of particles
         SampleWeights = IncrementalWeights/number_of_particles ;
         SumSampleWeights = sum(SampleWeights,1) ;
         SampleWeights = SampleWeights./SumSampleWeights ;
