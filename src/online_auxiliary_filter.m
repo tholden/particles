@@ -1,4 +1,4 @@
-function [xparam,std_param,lb_95,ub_95,median_param] = online_auxiliary_filter(xparam1,DynareDataset,DynareOptions,Model,EstimatedParameters,BayesInfo,DynareResults)
+function [xparam,std_param,lb_95,ub_95,median_param] = online_auxiliary_filter(xparam1,DynareDataset,DynareOptions,Model,EstimatedParameters,BayesInfo,bounds,DynareResults)
 
 % Carvalho & Lopes particle filter = auxiliary particle filter including Liu & West filter on parameters.
 %
@@ -37,7 +37,7 @@ function [xparam,std_param,lb_95,ub_95,median_param] = online_auxiliary_filter(x
 %
 % You should have received a copy of the GNU General Public License
 % along with Dynare.  If not, see <http://www.gnu.org/licenses/>.
-persistent Y init_flag mf0 mf1 bounds number_of_particles number_of_parameters liu_west_delta liu_west_chol_sigma_bar
+persistent Y init_flag mf0 mf1 number_of_particles number_of_parameters liu_west_delta liu_west_chol_sigma_bar
 persistent start_param sample_size number_of_observed_variables number_of_structural_innovations
 
 % Set seed for randn().
@@ -57,15 +57,11 @@ if isempty(init_flag)
     number_of_particles = DynareOptions.particle.number_of_particles;
     number_of_parameters = size(xparam1,1) ;
     Y = DynareDataset.data ;
-    sample_size = size(Y,2);
+    sample_size = size(Y,1);
     number_of_observed_variables = length(mf1);
     number_of_structural_innovations = length(ReducedForm.Q);
     liu_west_delta = DynareOptions.particle.liu_west_delta ;
-    %liu_west_chol_sigma_bar = DynareOptions.particle.liu_west_chol_sigma_bar*eye(number_of_parameters) ;
     start_param = xparam1 ; 
-    %liu_west_chol_sigma_bar = sqrt(bsxfun(@times,eye(number_of_parameters),BayesInfo.p2)) ; 
-    %start_param = BayesInfo.p1 ;
-    bounds = [BayesInfo.lb BayesInfo.ub] ;
     init_flag = 1;
 end
 
@@ -85,13 +81,14 @@ small_a = sqrt(1-h_square) ;
 
 % Initialization of parameter particles 
 xparam = zeros(number_of_parameters,number_of_particles) ;
-stderr = sqrt(bsxfun(@power,bounds(:,2)+bounds(:,1),2)/12)/100 ;
-stderr = sqrt(bsxfun(@power,bounds(:,2)+bounds(:,1),2)/12)/50 ;
+stderr = sqrt(bsxfun(@power,bounds.ub+bounds.lb,2)/12)/100 ;
+stderr = sqrt(bsxfun(@power,bounds.ub+bounds.lb,2)/12)/50 ;
+stderr = sqrt(bsxfun(@power,bounds.ub+bounds.lb,2)/12)/20 ;
 i = 1 ;
 while i<=number_of_particles
     %candidate = start_param + .001*liu_west_chol_sigma_bar*randn(number_of_parameters,1) ;
     candidate = start_param + bsxfun(@times,stderr,randn(number_of_parameters,1)) ;
-    if all(candidate(:) >= bounds(:,1)) && all(candidate(:) <= bounds(:,2))
+    if all(candidate(:) >= bounds.lb) && all(candidate(:) <= bounds.ub)
         xparam(:,i) = candidate(:) ;
         i = i+1 ;
     end
@@ -146,7 +143,7 @@ for t=1:sample_size
         ObservedVariables(:,i) = tmp(mf1,:) ;
     end
     PredictedObservedMean = sum(bsxfun(@times,weights,ObservedVariables),2) ;
-    PredictionError = bsxfun(@minus,Y(:,t),ObservedVariables);
+    PredictionError = bsxfun(@minus,Y(t,:)',ObservedVariables);
     dPredictedObservedMean = bsxfun(@minus,ObservedVariables,PredictedObservedMean);
     PredictedObservedVariance = bsxfun(@times,weights,dPredictedObservedMean)*dPredictedObservedMean' + ReducedForm.H ;
     wtilde = exp(-.5*(const_lik+log(det(PredictedObservedVariance))+sum(PredictionError.*(PredictedObservedVariance\PredictionError),1))) ;
@@ -155,7 +152,7 @@ for t=1:sample_size
     sum_tau_tilde = sum(tau_tilde) ;
     % particles selection 
     tau_tilde = tau_tilde/sum_tau_tilde ;
-    indx = index_resample(0,tau_tilde',DynareOptions);
+    indx = resample(0,tau_tilde',DynareOptions.particle);
     StateVectors = StateVectors(:,indx) ;
     if pruning
         StateVectors_ = StateVectors_(:,indx) ;
@@ -167,7 +164,7 @@ for t=1:sample_size
     i = 1 ;
     while i<=number_of_particles
         candidate = xparam(:,i) + chol_sigma_bar*randn(number_of_parameters,1) ;
-        if all(candidate >= bounds(:,1)) && all(candidate <= bounds(:,2))
+        if all(candidate >= bounds.lb) && all(candidate <= bounds.ub)
             xparam(:,i) = candidate ;
             % model resolution for new parameters particles
             [ys,trend_coeff,exit_flag,info,Model,DynareOptions,BayesInfo,DynareResults,ReducedForm] = ...
@@ -198,7 +195,7 @@ for t=1:sample_size
         end
     end
     PredictedObservedMean = sum(bsxfun(@times,weights,ObservedVariables),2) ;
-    PredictionError = bsxfun(@minus,Y(:,t),ObservedVariables);
+    PredictionError = bsxfun(@minus,Y(t,:)',ObservedVariables);
     dPredictedObservedMean = bsxfun(@minus,ObservedVariables,PredictedObservedMean);
     PredictedObservedVariance = bsxfun(@times,weights,dPredictedObservedMean)*dPredictedObservedMean' + ReducedForm.H ;
     lnw = exp(-.5*(const_lik+log(det(PredictedObservedVariance))+sum(PredictionError.*(PredictedObservedVariance\PredictionError),1)));
@@ -211,7 +208,7 @@ for t=1:sample_size
     end
     % final resampling (advised)
     if second_resample==1 
-        indx = index_resample(0,weights,DynareOptions);
+        indx = resample(0,weights,DynareOptions.particle);
         StateVectors = StateVectors(:,indx) ;
         if pruning
             StateVectors_ = StateVectors_(:,indx) ;
