@@ -1,6 +1,6 @@
-function [xparam,std_param,lb_95,ub_95,median_param] = online_auxiliary_filter(xparam1,DynareDataset,DynareOptions,Model,EstimatedParameters,BayesInfo,bounds,DynareResults)
-
-% Carvalho & Lopes particle filter = auxiliary particle filter including Liu & West filter on parameters.
+function [xparam,std_param,lb_95,ub_95,median_param] = online_auxiliary_filter(xparam1,DynareDataset,dataset_info,DynareOptions,Model,EstimatedParameters,BayesInfo,bounds,DynareResults)
+                                                                                    
+% Liu & West particle filter = auxiliary particle filter including Liu & West filter on parameters.
 %
 % INPUTS
 %    ReducedForm     [structure] Matlab's structure describing the reduced form model.
