@@ -114,39 +114,142 @@ for g=1:G
   StateSqrtP(:,:,g) = temp/sqrt(G) ;
 end
 
-if ParticleOptions.proposal_approximation.cubature
-    [StructuralShocksMu,StructuralShocksWeights] = spherical_radial_sigma_points(number_of_structural_innovations);
-    StructuralShocksWeights = ones(size(StructuralShocksMu,1),1)*StructuralShocksWeights ;
-elseif ParticleOptions.proposal_approximation.unscented
-    [StructuralShocksMu,StructuralShocksWeights,raf] = unscented_sigma_points(number_of_structural_innovations,ParticleOptions);
-else
-    if ~ParticleOptions.distribution_approximation.montecarlo
-        error('Estimation: This approximation for the proposal is not implemented or unknown!')
+% if ParticleOptions.mixture_structural_shocks==1
+%     StructuralShocksMu = zeros(1,number_of_structural_innovations) ;
+%     StructuralShocksWeights = 1 ;
+% else
+%     if ParticleOptions.proposal_approximation.cubature
+%         [StructuralShocksMu,StructuralShocksWeights] = spherical_radial_sigma_points(number_of_structural_innovations);
+%         StructuralShocksWeights = ones(size(StructuralShocksMu,1),1)*StructuralShocksWeights ;
+%     elseif ParticleOptions.proposal_approximation.unscented
+%         [StructuralShocksMu,StructuralShocksWeights,raf] = unscented_sigma_points(number_of_structural_innovations,ParticleOptions);
+%     else
+%         if ~ParticleOptions.distribution_approximation.montecarlo
+%             error('Estimation: This approximation for the proposal is not implemented or unknown!')
+%         end
+%     end
+% end
+% I = size(StructuralShocksWeights,1) ;
+% StructuralShocksMu = Q_lower_triangular_cholesky*(StructuralShocksMu') ;
+% StructuralShocksSqrtP = zeros(number_of_structural_innovations,number_of_structural_innovations,I) ;
+% for i=1:I
+%   StructuralShocksSqrtP(:,:,i) = Q_lower_triangular_cholesky/sqrt(StructuralShocksWeights(i)) ;
+% end
+% 
+% if ParticleOptions.mixture_measurement_shocks==1 
+%     ObservationShocksMu = zeros(1,number_of_observed_variables) ;
+%     ObservationShocksWeights = 1 ;
+% else    
+%     if ParticleOptions.proposal_approximation.cubature
+%         [ObservationShocksMu,ObservationShocksWeights] = spherical_radial_sigma_points(number_of_observed_variables);
+%         ObservationShocksWeights = ones(size(ObservationShocksMu,1),1)*ObservationShocksWeights;
+%     elseif ParticleOptions.proposal_approximation.unscented
+%         [ObservationShocksMu,ObservationShocksWeights,raf] = unscented_sigma_points(number_of_observed_variables,ParticleOptions);
+%     else
+%         if ~ParticleOptions.distribution_approximation.montecarlo
+%             error('Estimation: This approximation for the proposal is not implemented or unknown!')
+%         end
+%     end
+% end 
+% J = size(ObservationShocksWeights,1) ;
+% ObservationShocksMu = H_lower_triangular_cholesky*(ObservationShocksMu') ;
+% ObservationShocksSqrtP = zeros(number_of_observed_variables,number_of_observed_variables,J) ;
+% for j=1:J
+%   ObservationShocksSqrtP(:,:,j) = H_lower_triangular_cholesky/sqrt(ObservationShocksWeights(j)) ;
+% end
+
+if ParticleOptions.mixture_structural_shocks==0
+    StructuralShocksMu = zeros(1,number_of_structural_innovations) ;
+    StructuralShocksWeights = 1 ;
+    I = 1 ;
+    StructuralShocksMu = Q_lower_triangular_cholesky*(StructuralShocksMu') ;
+    StructuralShocksSqrtP = zeros(number_of_structural_innovations,number_of_structural_innovations,I) ;
+    StructuralShocksSqrtP(:,:,1) = Q_lower_triangular_cholesky ;
+elseif ParticleOptions.mixture_structural_shocks==1
+    if ParticleOptions.proposal_approximation.cubature
+        [StructuralShocksMu,StructuralShocksWeights] = spherical_radial_sigma_points(number_of_structural_innovations);
+        StructuralShocksWeights = ones(size(StructuralShocksMu,1),1)*StructuralShocksWeights ;
+    elseif ParticleOptions.proposal_approximation.unscented
+        [StructuralShocksMu,StructuralShocksWeights,raf] = unscented_sigma_points(number_of_structural_innovations,ParticleOptions);
+    else
+        if ~ParticleOptions.distribution_approximation.montecarlo
+            error('Estimation: This approximation for the proposal is not implemented or unknown!')
+        end
     end
-end
-I = size(StructuralShocksWeights,1) ;
-StructuralShocksMu = Q_lower_triangular_cholesky*(StructuralShocksMu') ;
-StructuralShocksSqrtP = zeros(number_of_structural_innovations,number_of_structural_innovations,I) ;
-for i=1:I
-  StructuralShocksSqrtP(:,:,i) = Q_lower_triangular_cholesky/sqrt(StructuralShocksWeights(i)) ;
+    I = size(StructuralShocksWeights,1) ;
+    StructuralShocksMu = Q_lower_triangular_cholesky*(StructuralShocksMu') ;
+    StructuralShocksSqrtP = zeros(number_of_structural_innovations,number_of_structural_innovations,I) ;
+    for i=1:I
+      StructuralShocksSqrtP(:,:,i) = Q_lower_triangular_cholesky ;
+    end
+else
+    if ParticleOptions.proposal_approximation.cubature
+        [StructuralShocksMu,StructuralShocksWeights] = spherical_radial_sigma_points(number_of_structural_innovations);
+        StructuralShocksWeights = ones(size(StructuralShocksMu,1),1)*StructuralShocksWeights ;
+    elseif ParticleOptions.proposal_approximation.unscented
+        [StructuralShocksMu,StructuralShocksWeights,raf] = unscented_sigma_points(number_of_structural_innovations,ParticleOptions);
+    else
+        if ~ParticleOptions.distribution_approximation.montecarlo
+            error('Estimation: This approximation for the proposal is not implemented or unknown!')
+        end
+    end
+    I = size(StructuralShocksWeights,1) ;
+    StructuralShocksMu = Q_lower_triangular_cholesky*(StructuralShocksMu') ;
+    StructuralShocksSqrtP = zeros(number_of_structural_innovations,number_of_structural_innovations,I) ;
+    for i=1:I
+      StructuralShocksSqrtP(:,:,i) = Q_lower_triangular_cholesky/sqrt(StructuralShocksWeights(i)) ;
+    end
 end
 
-if ParticleOptions.proposal_approximation.cubature
-    [ObservationShocksMu,ObservationShocksWeights] = spherical_radial_sigma_points(number_of_observed_variables);
-    ObservationShocksWeights = ones(size(ObservationShocksMu,1),1)*ObservationShocksWeights;
-elseif ParticleOptions.proposal_approximation.unscented
-    [ObservationShocksMu,ObservationShocksWeights,raf] = unscented_sigma_points(number_of_observed_variables,ParticleOptions);
-else
-    if ~ParticleOptions.distribution_approximation.montecarlo
-        error('Estimation: This approximation for the proposal is not implemented or unknown!')
-    end
-end
-J = size(ObservationShocksWeights,1) ;
+ObservationShocksMu = zeros(1,number_of_observed_variables) ;
+ObservationShocksWeights = 1 ;
+J = 1 ;
 ObservationShocksMu = H_lower_triangular_cholesky*(ObservationShocksMu') ;
 ObservationShocksSqrtP = zeros(number_of_observed_variables,number_of_observed_variables,J) ;
-for j=1:J
-  ObservationShocksSqrtP(:,:,j) = H_lower_triangular_cholesky/sqrt(ObservationShocksWeights(j)) ;
-end
+ObservationShocksSqrtP(:,:,1) = H_lower_triangular_cholesky ;
+
+% if ParticleOptions.mixture_measurement_shocks==0 
+%     ObservationShocksMu = zeros(1,number_of_observed_variables) ;
+%     ObservationShocksWeights = 1 ;
+%     J = 1 ;
+%     ObservationShocksMu = H_lower_triangular_cholesky*(ObservationShocksMu') ;
+%     ObservationShocksSqrtP = zeros(number_of_observed_variables,number_of_observed_variables,J) ;
+%     ObservationShocksSqrtP(:,:,1) = H_lower_triangular_cholesky ;
+% elseif ParticleOptions.mixture_measurement_shocks==1 
+%     if ParticleOptions.proposal_approximation.cubature
+%         [ObservationShocksMu,ObservationShocksWeights] = spherical_radial_sigma_points(number_of_observed_variables);
+%         ObservationShocksWeights = ones(size(ObservationShocksMu,1),1)*ObservationShocksWeights;
+%     elseif ParticleOptions.proposal_approximation.unscented
+%         [ObservationShocksMu,ObservationShocksWeights,raf] = unscented_sigma_points(number_of_observed_variables,ParticleOptions);
+%     else
+%         if ~ParticleOptions.distribution_approximation.montecarlo
+%             error('Estimation: This approximation for the proposal is not implemented or unknown!')
+%         end
+%     end
+%     J = size(ObservationShocksWeights,1) ;
+%     ObservationShocksMu = H_lower_triangular_cholesky*(ObservationShocksMu') ;
+%     ObservationShocksSqrtP = zeros(number_of_observed_variables,number_of_observed_variables,J) ;
+%     for j=1:J
+%       ObservationShocksSqrtP(:,:,j) = H_lower_triangular_cholesky ;
+%     end
+% else    
+%     if ParticleOptions.proposal_approximation.cubature
+%         [ObservationShocksMu,ObservationShocksWeights] = spherical_radial_sigma_points(number_of_observed_variables);
+%         ObservationShocksWeights = ones(size(ObservationShocksMu,1),1)*ObservationShocksWeights;
+%     elseif ParticleOptions.proposal_approximation.unscented
+%         [ObservationShocksMu,ObservationShocksWeights,raf] = unscented_sigma_points(number_of_observed_variables,ParticleOptions);
+%     else
+%         if ~ParticleOptions.distribution_approximation.montecarlo
+%             error('Estimation: This approximation for the proposal is not implemented or unknown!')
+%         end
+%     end
+%     J = size(ObservationShocksWeights,1) ;
+%     ObservationShocksMu = H_lower_triangular_cholesky*(ObservationShocksMu') ;
+%     ObservationShocksSqrtP = zeros(number_of_observed_variables,number_of_observed_variables,J) ;
+%     for j=1:J
+%       ObservationShocksSqrtP(:,:,j) = H_lower_triangular_cholesky/sqrt(ObservationShocksWeights(j)) ;
+%     end
+% end
 
 Gprime = G*I ;
 Gsecond = G*I*J ;
