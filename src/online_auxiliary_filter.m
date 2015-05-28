@@ -109,7 +109,11 @@ ub95_xparam = zeros(number_of_parameters,sample_size) ;
 
 %% The Online filter 
 for t=1:sample_size
-    disp(t)
+    if t>1
+        fprintf('\nSubsample with %s first observations.\n\n', int2str(t))
+    else
+        fprintf('\nSubsample with only the first observation.\n\n', int2str(t))
+    end
     % Moments of parameters particles distribution 
     m_bar = xparam*(weights') ;
     temp = bsxfun(@minus,xparam,m_bar) ;
@@ -253,7 +257,12 @@ for t=1:sample_size
            end
         end
     end
-    disp([lb95_xparam(:,t) mean_xparam(:,t) ub95_xparam(:,t)])
+    str = sprintf(' Lower Bound (95%%) \t Mean \t\t\t Upper Bound (95%%)');
+    for l=1:size(xparam,1)
+        str = sprintf('%s\n %5.4f \t\t %7.5f \t\t %5.4f', str, lb95_xparam(l,t), mean_xparam(l,t), ub95_xparam(l,t));
+    end
+    disp([str])
+    disp('')
 end
 distrib_param = xparam ;
 xparam = mean_xparam(:,sample_size) ;
