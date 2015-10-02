@@ -64,7 +64,7 @@ end
 
 % Get initial condition for the state vector.
 StateVectorMean = ReducedForm.StateVectorMean;
-StateVectorVarianceSquareRoot = reduced_rank_cholesky(ReducedForm.StateVectorVariance)';
+StateVectorVarianceSquareRoot = chol(ReducedForm.StateVectorVariance)';%reduced_rank_cholesky(ReducedForm.StateVectorVariance)';
 state_variance_rank = size(StateVectorVarianceSquareRoot,2);
 Q_lower_triangular_cholesky = chol(Q)';
 if pruning
@@ -76,7 +76,7 @@ end
 set_dynare_seed('default');
 
 % Initialization of the likelihood.
-const_lik = log(2*pi)*number_of_observed_variables;
+const_lik = log(2*pi)*number_of_observed_variables +log(det(H));
 lik  = NaN(sample_size,1);
 LIK  = NaN;
 
@@ -125,11 +125,11 @@ for t=1:sample_size
             tmp = tmp + nodes_weights(i)*local_state_space_iteration_2(yhat,nodes(i,:)*ones(1,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,ThreadsOptions.local_state_space_iteration_2);
         end
     end
-    PredictedObservedMean = weights*(tmp(mf1,:)');
+    %PredictedObservedMean = weights*(tmp(mf1,:)');
     PredictionError = bsxfun(@minus,Y(:,t),tmp(mf1,:));
-    dPredictedObservedMean = bsxfun(@minus,tmp(mf1,:),PredictedObservedMean');
-    PredictedObservedVariance = bsxfun(@times,weights,dPredictedObservedMean)*dPredictedObservedMean' +H;
-    wtilde = exp(-.5*(const_lik+log(det(PredictedObservedVariance))+sum(PredictionError.*(PredictedObservedVariance\PredictionError),1))) ;
+    %dPredictedObservedMean = bsxfun(@minus,tmp(mf1,:),PredictedObservedMean');
+    %PredictedObservedVariance = bsxfun(@times,weights,dPredictedObservedMean)*dPredictedObservedMean' +H;
+    wtilde = exp(-.5*(const_lik+sum(PredictionError.*(H\PredictionError),1))) ;
     tau_tilde = weights.*wtilde ;
     sum_tau_tilde = sum(tau_tilde) ;
     lik(t) = log(sum_tau_tilde) ; 
@@ -148,11 +148,11 @@ for t=1:sample_size
         tmp = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,ThreadsOptions.local_state_space_iteration_2);
     end
     StateVectors = tmp(mf0,:);
-    PredictedObservedMean = mean(tmp(mf1,:),2);
+    %PredictedObservedMean = mean(tmp(mf1,:),2);
     PredictionError = bsxfun(@minus,Y(:,t),tmp(mf1,:));
-    dPredictedObservedMean = bsxfun(@minus,tmp(mf1,:),PredictedObservedMean);
-    PredictedObservedVariance = (dPredictedObservedMean*dPredictedObservedMean')/number_of_particles + H;
-    lnw = exp(-.5*(const_lik+log(det(PredictedObservedVariance))+sum(PredictionError.*(PredictedObservedVariance\PredictionError),1)));
+    %dPredictedObservedMean = bsxfun(@minus,tmp(mf1,:),PredictedObservedMean);
+    %PredictedObservedVariance = (dPredictedObservedMean*dPredictedObservedMean')/number_of_particles + H;
+    lnw = exp(-.5*(const_lik+sum(PredictionError.*(H\PredictionError),1)));
     wtilde = lnw.*factor ;
     weights = wtilde/sum(wtilde);
 end

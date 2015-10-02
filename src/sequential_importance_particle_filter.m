@@ -66,12 +66,12 @@ if isempty(H)
 end
 
 % Initialization of the likelihood.
-const_lik = log(2*pi)*number_of_observed_variables;
+const_lik = log(2*pi)*number_of_observed_variables +log(det(H)) ;
 lik  = NaN(sample_size,1);
 
 % Get initial condition for the state vector.
 StateVectorMean = ReducedForm.StateVectorMean;
-StateVectorVarianceSquareRoot = reduced_rank_cholesky(ReducedForm.StateVectorVariance)';
+StateVectorVarianceSquareRoot = chol(ReducedForm.StateVectorVariance)';%reduced_rank_cholesky(ReducedForm.StateVectorVariance)';
 if pruning
     StateVectorMean_ = StateVectorMean;
     StateVectorVarianceSquareRoot_ = StateVectorVarianceSquareRoot;
@@ -103,12 +103,13 @@ for t=1:sample_size
     else
         tmp = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,ThreadsOptions.local_state_space_iteration_2);
     end
-    PredictedObservedMean = tmp(mf1,:)*transpose(weights);
+    %PredictedObservedMean = tmp(mf1,:)*transpose(weights);
     PredictionError = bsxfun(@minus,Y(:,t),tmp(mf1,:));
-    dPredictedObservedMean = bsxfun(@minus,tmp(mf1,:),PredictedObservedMean);
-    PredictedObservedVariance = bsxfun(@times,dPredictedObservedMean,weights)*dPredictedObservedMean' + H;
-    if rcond(PredictedObservedVariance) > 1e-16
-        lnw = -.5*(const_lik+log(det(PredictedObservedVariance))+sum(PredictionError.*(PredictedObservedVariance\PredictionError),1));
+    %dPredictedObservedMean = bsxfun(@minus,tmp(mf1,:),PredictedObservedMean);
+    %PredictedObservedVariance = bsxfun(@times,dPredictedObservedMean,weights)*dPredictedObservedMean' + H;
+    %PredictedObservedVariance = H;
+    if rcond(H) > 1e-16
+        lnw = -.5*(const_lik+sum(PredictionError.*(H\PredictionError),1));
     else
         LIK = NaN;
         return

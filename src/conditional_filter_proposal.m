@@ -113,7 +113,7 @@ else
     StateVectorMean = PredictedStateMean + KalmanFilterGain*(obs - PredictedObservedMean);
     StateVectorVariance = PredictedStateVariance - KalmanFilterGain*PredictedObservedVariance*KalmanFilterGain';
     StateVectorVariance = .5*(StateVectorVariance+StateVectorVariance');
-    StateVectorVarianceSquareRoot = reduced_rank_cholesky(StateVectorVariance)';
+    StateVectorVarianceSquareRoot = chol(StateVectorVariance)';%reduced_rank_cholesky(StateVectorVariance)';
 end
 
 ProposalStateVector = StateVectorVarianceSquareRoot*randn(size(StateVectorVarianceSquareRoot,2),1)+StateVectorMean ;
