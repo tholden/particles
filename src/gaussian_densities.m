@@ -1,4 +1,4 @@
-function IncrementalWeights = gaussian_densities(obs,mut_t,sqr_Pss_t_t,st_t_1,sqr_Pss_t_t_1,particles,H,normconst,weigths1,weigths2,ReducedForm,ThreadsOptions)
+function IncrementalWeights = gaussian_densities(obs,mut_t,sqr_Pss_t_t,st_t_1,sqr_Pss_t_t_1,particles,H,normconst,ReducedForm,ThreadsOptions)
 %
 % Elements to calculate the importance sampling ratio 
 %
