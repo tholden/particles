@@ -1,4 +1,4 @@
-function IncrementalWeights = gaussian_densities(obs,mut_t,sqr_Pss_t_t,st_t_1,sqr_Pss_t_t_1,particles,H,normconst,ReducedForm,ThreadsOptions)
+function IncrementalWeights = gaussian_densities(obs,mut_t,sqr_Pss_t_t,st_t_1,sqr_Pss_t_t_1,particles,H,normconst,weigths1,weigths2,ReducedForm,ThreadsOptions)
 %
 % Elements to calculate the importance sampling ratio 
 %
@@ -43,7 +43,9 @@ prior = probability2(st_t_1,sqr_Pss_t_t_1,particles) ;
 % likelihood 
 yt_t_1_i = measurement_equations(particles,ReducedForm,ThreadsOptions) ;
 eta_t_i = bsxfun(@minus,obs,yt_t_1_i)' ;
-Pyy = H ;
+yt_t_1 = sum(yt_t_1_i*weigths1,2) ;
+tmp = bsxfun(@minus,yt_t_1_i,yt_t_1) ;
+Pyy = bsxfun(@times,weigths2',tmp)*tmp' + H ;
 sqr_det = sqrt(det(Pyy)) ;
 foo = (eta_t_i/Pyy).*eta_t_i ;
 likelihood = exp(-0.5*sum(foo,2))/(normconst*sqr_det) + 1e-99 ;			
