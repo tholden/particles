@@ -92,14 +92,14 @@ if isempty(H)
     H = 0;
     H_lower_triangular_cholesky = 0;
 else
-    H_lower_triangular_cholesky = chol(H)' ; %reduced_rank_cholesky(H)';
+    H_lower_triangular_cholesky = reduced_rank_cholesky(H)';
 end
 
 % Get initial condition for the state vector.
 StateVectorMean = ReducedForm.StateVectorMean;
-StateVectorVarianceSquareRoot = chol(ReducedForm.StateVectorVariance)';%reduced_rank_cholesky(ReducedForm.StateVectorVariance)';
+StateVectorVarianceSquareRoot = reduced_rank_cholesky(ReducedForm.StateVectorVariance)';
 state_variance_rank = size(StateVectorVarianceSquareRoot,2);
-Q_lower_triangular_cholesky = chol(Q)'; %reduced_rank_cholesky(Q)';
+Q_lower_triangular_cholesky = reduced_rank_cholesky(Q)';
 
 % Initialization of the likelihood.
 const_lik = (2*pi)^(number_of_observed_variables/2) ;
@@ -115,7 +115,7 @@ for t=1:sample_size
                     gaussian_densities(Y(:,t),StateVectorMean,...
                                         StateVectorVarianceSquareRoot,PredictedStateMean,...
                                         PredictedStateVarianceSquareRoot,StateParticles,H,const_lik,...
-                                        ReducedForm,ThreadsOptions) ;
+                                        weights2,weights_c2,ReducedForm,ThreadsOptions) ;
         SampleWeights = weights2.*IncrementalWeights ;
     else 
         StateParticles = bsxfun(@plus,StateVectorVarianceSquareRoot*randn(state_variance_rank,number_of_particles),StateVectorMean) ;
@@ -123,19 +123,22 @@ for t=1:sample_size
                     gaussian_densities(Y(:,t),StateVectorMean,...
                                         StateVectorVarianceSquareRoot,PredictedStateMean,...
                                         PredictedStateVarianceSquareRoot,StateParticles,H,const_lik,...
-                                        ReducedForm,ThreadsOptions) ;
+                                        1/number_of_particles,1/number_of_particles,ReducedForm,ThreadsOptions) ;
         SampleWeights = IncrementalWeights/number_of_particles ;
     end
     SampleWeights = SampleWeights + 1e-6*ones(size(SampleWeights,1),1) ;
     SumSampleWeights = sum(SampleWeights) ;
     lik(t) = log(SumSampleWeights) ;
     SampleWeights = SampleWeights./SumSampleWeights ;
+    if not(ParticleOptions.distribution_approximation.cubature || ParticleOptions.distribution_approximation.unscented)
+        if (ParticleOptions.resampling.status.generic && neff(SampleWeights)<ParticleOptions.resampling.threshold*sample_size) || ParticleOptions.resampling.status.systematic
+            StateParticles = resample(StateParticles',SampleWeights,ParticleOptions)' ; 
+            SampleWeights = ones(number_of_particles,1)/number_of_particles;
+        end 
+    end
     StateVectorMean = StateParticles*SampleWeights ;
     temp = bsxfun(@minus,StateParticles,StateVectorMean) ;
-    %disp(SampleWeights)
-    %disp(StateParticles) 
-    %disp(StateVectorMean)
-    StateVectorVarianceSquareRoot = chol( bsxfun(@times,SampleWeights',temp)*temp' )';%reduced_rank_cholesky( bsxfun(@times,SampleWeights',temp)*temp' )';
+    StateVectorVarianceSquareRoot = reduced_rank_cholesky( bsxfun(@times,SampleWeights',temp)*temp' )';
 end
 
 LIK = -sum(lik(start:end));
