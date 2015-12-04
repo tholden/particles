@@ -1,4 +1,4 @@
-function [StateMu,StateSqrtP,StateWeights] = fit_gaussian_mixture(X,StateMu,StateSqrtP,StateWeights,crit,niters,check) 
+function [StateMu,StateSqrtP,StateWeights] = fit_gaussian_mixture(X,X_weights,StateMu,StateSqrtP,StateWeights,crit,niters,check) 
 
 % Copyright (C) 2013 Dynare Team
 %
@@ -26,7 +26,7 @@ end
 eold = -Inf;
 for n=1:niters
   % Calculate posteriors based on old parameters
-  [prior,likelihood,marginal,posterior] = probability(StateMu,StateSqrtP,StateWeights,X);
+  [prior,likelihood,marginal,posterior] = probability3(StateMu,StateSqrtP,StateWeights,X,X_weights);
   e = sum(log(marginal));
   if (n > 1 && abs((e - eold)/eold) < crit)
     return;
