@@ -35,4 +35,3 @@ dim = size(X,1) ;
 normfact = bsxfun(@power,(2*pi),(dim/2)) ;  
 foo = S\(bsxfun(@minus,X,mu)) ;
 density = exp(-0.5*sum(foo.*foo)')./abs((normfact*prod(diag(S)))) + 1e-99 ;
-

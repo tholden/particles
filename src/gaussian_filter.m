@@ -126,9 +126,16 @@ for t=1:sample_size
                                         1/number_of_particles,1/number_of_particles,ReducedForm,ThreadsOptions) ;
         SampleWeights = IncrementalWeights/number_of_particles ;
     end
+    SampleWeights = SampleWeights + 1e-6*ones(size(SampleWeights,1),1) ;
     SumSampleWeights = sum(SampleWeights) ;
     lik(t) = log(SumSampleWeights) ;
     SampleWeights = SampleWeights./SumSampleWeights ;
+    if not(ParticleOptions.distribution_approximation.cubature || ParticleOptions.distribution_approximation.unscented)
+        if (ParticleOptions.resampling.status.generic && neff(SampleWeights)<ParticleOptions.resampling.threshold*sample_size) || ParticleOptions.resampling.status.systematic
+            StateParticles = resample(StateParticles',SampleWeights,ParticleOptions)' ; 
+            SampleWeights = ones(number_of_particles,1)/number_of_particles;
+        end 
+    end
     StateVectorMean = StateParticles*SampleWeights ;
     temp = bsxfun(@minus,StateParticles,StateVectorMean) ;
     StateVectorVarianceSquareRoot = reduced_rank_cholesky( bsxfun(@times,SampleWeights',temp)*temp' )';

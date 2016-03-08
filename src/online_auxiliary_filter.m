@@ -43,7 +43,7 @@ persistent start_param sample_size number_of_observed_variables number_of_struct
 % Set seed for randn().
 set_dynare_seed('default') ;
 pruning = DynareOptions.particle.pruning;
-second_resample = 1 ;
+second_resample = 0 ;
 variance_update = 1 ;
 
 % initialization of state particles
@@ -67,7 +67,7 @@ end
 
 % Get initial conditions for the state particles 
 StateVectorMean = ReducedForm.StateVectorMean;
-StateVectorVarianceSquareRoot = reduced_rank_cholesky(ReducedForm.StateVectorVariance)';
+StateVectorVarianceSquareRoot = chol(ReducedForm.StateVectorVariance)';
 state_variance_rank = size(StateVectorVarianceSquareRoot,2);
 StateVectors = bsxfun(@plus,StateVectorVarianceSquareRoot*randn(state_variance_rank,number_of_particles),StateVectorMean);
 if pruning
@@ -81,9 +81,9 @@ small_a = sqrt(1-h_square) ;
 
 % Initialization of parameter particles 
 xparam = zeros(number_of_parameters,number_of_particles) ;
-stderr = sqrt(bsxfun(@power,bounds.ub+bounds.lb,2)/12)/100 ;
-stderr = sqrt(bsxfun(@power,bounds.ub+bounds.lb,2)/12)/50 ;
-stderr = sqrt(bsxfun(@power,bounds.ub+bounds.lb,2)/12)/20 ;
+stderr = sqrt(bsxfun(@power,bounds.ub-bounds.lb,2)/12)/100 ;
+stderr = sqrt(bsxfun(@power,bounds.ub-bounds.lb,2)/12)/50 ;
+%stderr = sqrt(bsxfun(@power,bounds.ub-bounds.lb,2)/12)/20 ;
 i = 1 ;
 while i<=number_of_particles
     %candidate = start_param + .001*liu_west_chol_sigma_bar*randn(number_of_parameters,1) ;
@@ -122,7 +122,7 @@ for t=1:sample_size
         chol_sigma_bar = chol(h_square*sigma_bar)' ;
     end
     % Prediction (without shocks)
-    ObservedVariables = zeros(number_of_observed_variables,number_of_particles) ;
+    tau_tilde = zeros(1,number_of_particles) ;
     for i=1:number_of_particles
         % model resolution 
         [ys,trend_coeff,exit_flag,info,Model,DynareOptions,BayesInfo,DynareResults,ReducedForm] = ... 
@@ -144,27 +144,24 @@ for t=1:sample_size
         else
             tmp = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,1),ghx,ghu,constant,ghxx,ghuu,ghxu,DynareOptions.threads.local_state_space_iteration_2);
         end
-        ObservedVariables(:,i) = tmp(mf1,:) ;
+        PredictionError = bsxfun(@minus,Y(t,:)',tmp(mf1,:));
+        % Replace Gaussian density with a Student density with 3 degrees of
+        % freedom for fat tails.
+        z = sum(PredictionError.*(ReducedForm.H\PredictionError),1) ;
+        tau_tilde(i) = weights(i).*(tpdf(z,3*ones(size(z)))+1e-99) ;
+        %tau_tilde(i) = weights(i).*exp(-.5*(const_lik+log(det(ReducedForm.H))+sum(PredictionError.*(ReducedForm.H\PredictionError),1))) ;
     end
-    PredictedObservedMean = sum(bsxfun(@times,weights,ObservedVariables),2) ;
-    PredictionError = bsxfun(@minus,Y(t,:)',ObservedVariables);
-    dPredictedObservedMean = bsxfun(@minus,ObservedVariables,PredictedObservedMean);
-    PredictedObservedVariance = bsxfun(@times,weights,dPredictedObservedMean)*dPredictedObservedMean' + ReducedForm.H ;
-    wtilde = exp(-.5*(const_lik+log(det(PredictedObservedVariance))+sum(PredictionError.*(PredictedObservedVariance\PredictionError),1))) ;
-    % unormalized weights and observation likelihood contribution 
-    tau_tilde = weights.*wtilde ;
-    sum_tau_tilde = sum(tau_tilde) ;
     % particles selection 
-    tau_tilde = tau_tilde/sum_tau_tilde ;
+    tau_tilde = tau_tilde/sum(tau_tilde)  ;
     indx = resample(0,tau_tilde',DynareOptions.particle);
     StateVectors = StateVectors(:,indx) ;
     if pruning
         StateVectors_ = StateVectors_(:,indx) ;
     end
-    xparam = bsxfun(@plus,(1-small_a).*m_bar,small_a.*xparam) ;
-    xparam = xparam(:,indx) ;
-    wtilde = wtilde(indx) ;
+    xparam = bsxfun(@plus,(1-small_a).*m_bar,small_a.*xparam(:,indx)) ;
+    w_stage1 = weights(indx)./tau_tilde(indx) ;
     % draw in the new distributions 
+    wtilde = zeros(1,number_of_particles) ;
     i = 1 ;
     while i<=number_of_particles
         candidate = xparam(:,i) + chol_sigma_bar*randn(number_of_parameters,1) ;
@@ -194,23 +191,17 @@ for t=1:sample_size
                 tmp = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,DynareOptions.threads.local_state_space_iteration_2);
             end
             StateVectors(:,i) = tmp(mf0,:) ;
-            ObservedVariables(:,i) = tmp(mf1,:) ;
+            PredictionError = bsxfun(@minus,Y(t,:)',tmp(mf1,:));
+            wtilde(i) = w_stage1(i)*exp(-.5*(const_lik+log(det(ReducedForm.H))+sum(PredictionError.*(ReducedForm.H\PredictionError),1)));
             i = i+1 ;
         end
     end
-    PredictedObservedMean = sum(bsxfun(@times,weights,ObservedVariables),2) ;
-    PredictionError = bsxfun(@minus,Y(t,:)',ObservedVariables);
-    dPredictedObservedMean = bsxfun(@minus,ObservedVariables,PredictedObservedMean);
-    PredictedObservedVariance = bsxfun(@times,weights,dPredictedObservedMean)*dPredictedObservedMean' + ReducedForm.H ;
-    lnw = exp(-.5*(const_lik+log(det(PredictedObservedVariance))+sum(PredictionError.*(PredictedObservedVariance\PredictionError),1)));
-    % importance ratio 
-    wtilde = lnw./wtilde ;
     % normalization 
     weights = wtilde/sum(wtilde);
     if (variance_update==1) && (neff(weights)<DynareOptions.particle.resampling.threshold*sample_size)
         variance_update = 0 ;
     end
-    % final resampling (advised)
+    % final resampling (not advised)
     if second_resample==1 
         indx = resample(0,weights,DynareOptions.particle);
         StateVectors = StateVectors(:,indx) ;
@@ -242,16 +233,16 @@ for t=1:sample_size
            pass2=1 ;
            pass3=1 ;
            for j=1:number_of_particles
-               if cumulated_weights(j)>0.025 && pass1==1 
-                   lb95_xparam(i,t) = (temp(j-1,1)+temp(j,1))/2 ;
+               if cumulated_weights(j)>=0.025 && pass1==1 
+                   lb95_xparam(i,t) = temp(j,1) ; 
                    pass1 = 2 ;
                end
-               if cumulated_weights(j)>0.5 && pass2==1
-                   median_xparam(i,t) = (temp(j-1,1)+temp(j,1))/2 ;
+               if cumulated_weights(j)>=0.5 && pass2==1
+                   median_xparam(i,t) = temp(j,1) ; 
                    pass2 = 2 ;
                end
-               if cumulated_weights(j)>0.975 && pass3==1
-                   ub95_xparam(i,t) = (temp(j-1,1)+temp(j,1))/2 ;
+               if cumulated_weights(j)>=0.975 && pass3==1
+                   ub95_xparam(i,t) = temp(j,1) ; 
                    pass3 = 2 ;
                end
            end

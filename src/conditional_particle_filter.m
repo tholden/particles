@@ -57,9 +57,9 @@ function [LIK,lik] = conditional_particle_filter(ReducedForm,Y,start,ParticleOpt
 % AUTHOR(S) frederic DOT karame AT univ DASH lemans DOT fr
 %           stephane DOT adjemian AT univ DASH lemans DOT fr
 
-persistent init_flag mf0 mf1
+persistent init_flag mf1
 persistent number_of_particles 
-persistent sample_size number_of_state_variables number_of_observed_variables 
+persistent sample_size number_of_observed_variables 
 
 % Set default
 if isempty(start)
@@ -68,10 +68,8 @@ end
 
 % Set persistent variables.
 if isempty(init_flag)
-    mf0 = ReducedForm.mf0;
     mf1 = ReducedForm.mf1;
     sample_size = size(Y,2);
-    number_of_state_variables = length(mf0);
     number_of_observed_variables = length(mf1);
     init_flag = 1;
     number_of_particles = ParticleOptions.number_of_particles ;
@@ -84,25 +82,23 @@ if isempty(H)
     H = 0;
     H_lower_triangular_cholesky = 0;
 else
-    H_lower_triangular_cholesky = reduced_rank_cholesky(H)';
+    H_lower_triangular_cholesky = chol(H)'; 
 end
 
 % Get initial condition for the state vector.
 StateVectorMean = ReducedForm.StateVectorMean;
-StateVectorVarianceSquareRoot = reduced_rank_cholesky(ReducedForm.StateVectorVariance)';
+StateVectorVarianceSquareRoot = chol(ReducedForm.StateVectorVariance)';
 state_variance_rank = size(StateVectorVarianceSquareRoot,2);
-Q_lower_triangular_cholesky = reduced_rank_cholesky(Q)';
+Q_lower_triangular_cholesky = chol(Q)'; 
 
 % Set seed for randn().
 set_dynare_seed('default');
 
 % Initialization of the likelihood.
-normconst2 = log(2*pi)*number_of_observed_variables*prod(diag(H_lower_triangular_cholesky)) ;
+normconst2 = sqrt( ((2*pi)^number_of_observed_variables)*prod(det(H)) ) ;
 lik  = NaN(sample_size,1);
 LIK  = NaN;
-
 ks = 0 ;
-
 StateParticles = bsxfun(@plus,StateVectorVarianceSquareRoot*randn(state_variance_rank,number_of_particles),StateVectorMean);
 SampleWeights = ones(1,number_of_particles)/number_of_particles ;
 for t=1:sample_size
@@ -121,5 +117,3 @@ for t=1:sample_size
 end
 
 LIK = -sum(lik(start:end));
-
-
