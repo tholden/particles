@@ -105,7 +105,7 @@ if ParticleOptions.proposal_approximation.cubature || ParticleOptions.proposal_a
     StateVectorVarianceSquareRoot = mat(number_of_observed_variables+(1:number_of_state_variables),number_of_observed_variables+(1:number_of_state_variables));
     Error = obs - PredictedObservedMean ;
     StateVectorMean = PredictedStateMean + (CovarianceObservedStateSquareRoot/PredictedObservedVarianceSquareRoot)*Error ;
-    if strcmpi(options_.particle.filter_algorithm, 'cpf1')
+    if options_.particle.cpf_weights_method.amisanotristani
         Weights = SampleWeights.*probability2(zeros(number_of_observed_variables,1),PredictedObservedVarianceSquareRoot,Error) ; 
     end
 else
@@ -119,14 +119,14 @@ else
     StateVectorMean = PredictedStateMean + KalmanFilterGain*Error ;
     StateVectorVariance = PredictedStateVariance - KalmanFilterGain*PredictedObservedVariance*KalmanFilterGain';
     StateVectorVarianceSquareRoot = chol(StateVectorVariance + 1e-6)' ;
-    if strcmpi(options_.particle.filter_algorithm, 'cpf1')
+    if options_.particle.cpf_weights_method.amisanotristani
         Weights = SampleWeights.*probability2(zeros(number_of_observed_variables,1),chol(PredictedObservedVariance)',Error) ; 
     end
 end
 
 PredictedStateVarianceSquareRoot = chol(PredictedStateVariance + 1e-6)'  ;
 ProposalStateVector = StateVectorVarianceSquareRoot*randn(size(StateVectorVarianceSquareRoot,2),1)+StateVectorMean ;
-if strcmpi(options_.particle.filter_algorithm, 'cpf2')
+if options_.particle.cpf_weights_method.murrayjonesparslow
     Prior = probability2(PredictedStateMean,PredictedStateVarianceSquareRoot,ProposalStateVector) ; 
     Posterior = probability2(StateVectorMean,StateVectorVarianceSquareRoot,ProposalStateVector) ; 
     Likelihood = probability2(obs,H_lower_triangular_cholesky,measurement_equations(ProposalStateVector,ReducedForm,ThreadsOptions)) ; 
