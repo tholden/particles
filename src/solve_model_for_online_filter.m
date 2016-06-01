@@ -294,7 +294,7 @@ dr = DynareResults.dr;
 if isempty(init_flag)
     mf0 = BayesInfo.mf0;
     mf1 = BayesInfo.mf1;
-    restrict_variables_idx  = BayesInfo.restrict_var_list;
+    restrict_variables_idx  = dr.restrict_var_list;
     observed_variables_idx  = restrict_variables_idx(mf1);
     state_variables_idx     = restrict_variables_idx(mf0);
     sample_size = size(Y,2);
