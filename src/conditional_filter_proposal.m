@@ -118,13 +118,13 @@ else
     Error = obs - PredictedObservedMean ;
     StateVectorMean = PredictedStateMean + KalmanFilterGain*Error ;
     StateVectorVariance = PredictedStateVariance - KalmanFilterGain*PredictedObservedVariance*KalmanFilterGain';
-    StateVectorVarianceSquareRoot = chol(StateVectorVariance + 1e-6)' ;
+    StateVectorVarianceSquareRoot = chol(StateVectorVariance + eye(number_of_state_variables)*1e-6)' ;
     if ParticleOptions.cpf_weights_method.amisanotristani
         Weights = SampleWeights.*probability2(zeros(number_of_observed_variables,1),chol(PredictedObservedVariance)',Error) ; 
     end
 end
 
-PredictedStateVarianceSquareRoot = chol(PredictedStateVariance + 1e-6)'  ;
+PredictedStateVarianceSquareRoot = chol(PredictedStateVariance + eye(number_of_state_variables)*1e-6)'  ;
 ProposalStateVector = StateVectorVarianceSquareRoot*randn(size(StateVectorVarianceSquareRoot,2),1)+StateVectorMean ;
 if ParticleOptions.cpf_weights_method.murrayjonesparslow
     Prior = probability2(PredictedStateMean,PredictedStateVarianceSquareRoot,ProposalStateVector) ; 
