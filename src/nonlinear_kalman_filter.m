@@ -1,4 +1,4 @@
-function [LIK,lik] = Kalman_filter(ReducedForm, Y, start, ParticleOptions, ThreadsOptions)
+function [LIK,lik] = nonlinear_kalman_filter(ReducedForm, Y, start, ParticleOptions, ThreadsOptions)
 % Evaluates the likelihood of a non-linear model approximating the
 % predictive (prior) and filtered (posterior) densities for state variables
 % by a Kalman filter.

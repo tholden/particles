@@ -294,7 +294,7 @@ for t=1:sample_size
             StateParticles = bsxfun(@plus,StateMuPost(:,i),StateSqrtPPost(:,:,i)*nodes') ;
             IncrementalWeights = gaussian_mixture_densities(Y(:,t),StateMuPrior,StateSqrtPPrior,StateWeightsPrior,...
                                                                    StateMuPost,StateSqrtPPost,StateWeightsPost,...
-                                                                   StateParticles,H,const_lik,ReducedForm,ThreadsOptions) ;
+                                                                   StateParticles,H,const_lik,weights,weights_c,ReducedForm,ThreadsOptions) ;
             SampleWeights(i) = sum(StateWeightsPost(i)*weights.*IncrementalWeights) ;
         end
         SumSampleWeights = sum(SampleWeights) ;
@@ -312,7 +312,8 @@ for t=1:sample_size
         StateParticles = importance_sampling(StateMuPost,StateSqrtPPost,StateWeightsPost',number_of_particles) ;
         IncrementalWeights = gaussian_mixture_densities(Y(:,t),StateMuPrior,StateSqrtPPrior,StateWeightsPrior,...
                                                                StateMuPost,StateSqrtPPost,StateWeightsPost,...
-                                                               StateParticles,H,const_lik,ReducedForm,ThreadsOptions) ;
+                                                               StateParticles,H,const_lik,1/number_of_particles,...
+                                                               1/number_of_particles,ReducedForm,ThreadsOptions) ;
         SampleWeights = IncrementalWeights/number_of_particles ;
         SumSampleWeights = sum(SampleWeights,1) ;
         SampleWeights = SampleWeights./SumSampleWeights ;

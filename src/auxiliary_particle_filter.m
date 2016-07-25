@@ -84,18 +84,18 @@ end
 % Uncomment for building the mean average predictions based on a sparse
 % grids of structural shocks. Otherwise, all shocks are set to 0 in the
 % prediction.
-%if ParticleOptions.proposal_approximation.cubature
-%    [nodes,nodes_weights] = spherical_radial_sigma_points(number_of_structural_innovations) ;
-%    nodes_weights = ones(size(nodes,1),1)*nodes_weights ;
-%elseif ParticleOptions.proposal_approximation.unscented
-%    [nodes,nodes_weights,nodes_weights_c] = unscented_sigma_points(number_of_structural_innovations,ParticleOptions);
-%else
-%    error('Estimation: This approximation for the proposal is not implemented or unknown!')
-%end    
-%nodes = Q_lower_triangular_cholesky*nodes ;
+% if ParticleOptions.proposal_approximation.cubature
+%     [nodes,nodes_weights] = spherical_radial_sigma_points(number_of_structural_innovations) ;
+%     nodes_weights = ones(size(nodes,1),1)*nodes_weights ;
+% elseif ParticleOptions.proposal_approximation.unscented
+%     [nodes,nodes_weights,nodes_weights_c] = unscented_sigma_points(number_of_structural_innovations,ParticleOptions);
+% else
+%     error('Estimation: This approximation for the proposal is not implemented or unknown!')
+% end    
+% nodes = (Q_lower_triangular_cholesky*(nodes'))' ;
 
 nodes = zeros(1,number_of_structural_innovations) ;
-nodes_weights = 1 ; 
+nodes_weights = ones(number_of_structural_innovations,1) ;   
 
 for t=1:sample_size
     yhat = bsxfun(@minus,StateVectors,state_variables_steady_state);
@@ -104,14 +104,14 @@ for t=1:sample_size
         tmp = 0 ;
         tmp_ = 0 ;
         for i=1:size(nodes)
-            [tmp1, tmp1_] = local_state_space_iteration_2(yhat,nodes(i,:)*ones(1,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,ThreadsOptions.local_state_space_iteration_2);
+            [tmp1, tmp1_] = local_state_space_iteration_2(yhat,nodes(i,:)'*ones(1,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,ThreadsOptions.local_state_space_iteration_2);
             tmp = tmp + nodes_weights(i)*tmp1 ;
             tmp_ = tmp_ + nodes_weights(i)*tmp1_ ;
         end
     else
         tmp = 0 ;
         for i=1:size(nodes)
-            tmp = tmp + nodes_weights(i)*local_state_space_iteration_2(yhat,nodes(i,:)*ones(1,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,ThreadsOptions.local_state_space_iteration_2);
+            tmp = tmp + nodes_weights(i)*local_state_space_iteration_2(yhat,nodes(i,:)'*ones(1,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,ThreadsOptions.local_state_space_iteration_2);
         end
     end
     PredictionError = bsxfun(@minus,Y(:,t),tmp(mf1,:));
