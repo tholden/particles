@@ -102,7 +102,7 @@ ks = 0 ;
 StateParticles = bsxfun(@plus,StateVectorVarianceSquareRoot*randn(state_variance_rank,number_of_particles),StateVectorMean);
 SampleWeights = ones(1,number_of_particles)/number_of_particles ;
 for t=1:sample_size
-    parfor i=1:number_of_particles 
+    for i=1:number_of_particles 
       [StateParticles(:,i),SampleWeights(i)] = ...
           conditional_filter_proposal(ReducedForm,Y(:,t),StateParticles(:,i),SampleWeights(i),Q_lower_triangular_cholesky,H_lower_triangular_cholesky,H,ParticleOptions,ThreadsOptions,normconst2) ;
     end
