@@ -152,8 +152,18 @@ for t=1:sample_size
         KalmanFilterGain = PredictedStateAndObservedCovariance/PredictedObservedVariance;
         StateVectorMean = PredictedStateMean + KalmanFilterGain*PredictionError;
         StateVectorVariance = PredictedStateVariance - KalmanFilterGain*PredictedObservedVariance*KalmanFilterGain';
-        StateVectorVarianceSquareRoot = chol(StateVectorVariance)';
-        PredictedObservedVarianceSquareRoot = chol(PredictedObservedVariance)' ;
+        [StateVectorVarianceSquareRoot, p]= chol(StateVectorVariance,'lower');
+        if p
+            LIK=-Inf;
+            lik(t)=-Inf;
+            return
+        end
+        [PredictedObservedVarianceSquareRoot, p]= chol(PredictedObservedVariance,'lower');
+        if p
+            LIK=-Inf;
+            lik(t)=-Inf;
+            return
+        end
     end
     lik(t) = log( probability2(0,PredictedObservedVarianceSquareRoot,PredictionError) ) ;
 end
