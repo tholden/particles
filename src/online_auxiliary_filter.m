@@ -303,7 +303,7 @@ for plt = 1:nbplt,
         axis tight
         drawnow
     end
-    dyn_saveas(hh,[ Model.fname '_param_traj' int2str(plt) ],DynareOptions);
+    dyn_saveas(hh,[ Model.fname '_param_traj' int2str(plt) ],DynareOptions.nodisplay,DynareOptions.graph_format);
     if TeX
         % TeX eps loader file
         fprintf(fidTeX,'\\begin{figure}[H]\n');
@@ -352,7 +352,7 @@ for plt = 1:nbplt,
         axis tight
         drawnow
     end
-    dyn_saveas(hh,[ Model.fname '_param_density' int2str(plt) ],DynareOptions);
+    dyn_saveas(hh,[ Model.fname '_param_density' int2str(plt) ],DynareOptions.nodisplay,DynareOptions.graph_format);
     if TeX
         % TeX eps loader file
         fprintf(fidTeX,'\\begin{figure}[H]\n');
