@@ -21,7 +21,7 @@ function [xparam,std_param,lb_95,ub_95,median_param] = online_auxiliary_filter(x
 % NOTES
 %   The vector "lik" is used to evaluate the jacobian of the likelihood.
 
-% Copyright (C) 2013-2016 Dynare Team
+% Copyright (C) 2013-2017 Dynare Team
 %
 % This file is part of Dynare.
 %
@@ -281,7 +281,7 @@ for plt = 1:nbplt,
         NAMES = [];
         TeXNAMES = [];
     end
-    hh = dyn_figure(DynareOptions,'Name','Parameters Trajectories');
+    hh = dyn_figure(DynareOptions.nodisplay,'Name','Parameters Trajectories');
     for k=1:min(nstar,length(xparam)-(plt-1)*nstar)
         subplot(nr,nc,k)
         kk = (plt-1)*nstar+k;
@@ -303,7 +303,7 @@ for plt = 1:nbplt,
         axis tight
         drawnow
     end
-    dyn_saveas(hh,[ Model.fname '_param_traj' int2str(plt) ],DynareOptions);
+    dyn_saveas(hh,[ Model.fname '_param_traj' int2str(plt) ],DynareOptions.nodisplay,DynareOptions.graph_format);
     if TeX
         % TeX eps loader file
         fprintf(fidTeX,'\\begin{figure}[H]\n');
@@ -328,7 +328,7 @@ for plt = 1:nbplt,
         NAMES = [];
         TeXNAMES = [];
     end
-    hh = dyn_figure(DynareOptions,'Name','Parameters Densities');
+    hh = dyn_figure(DynareOptions.nodisplay,'Name','Parameters Densities');
     for k=1:min(nstar,length(xparam)-(plt-1)*nstar)
         subplot(nr,nc,k)
         kk = (plt-1)*nstar+k;
@@ -352,7 +352,7 @@ for plt = 1:nbplt,
         axis tight
         drawnow
     end
-    dyn_saveas(hh,[ Model.fname '_param_density' int2str(plt) ],DynareOptions);
+    dyn_saveas(hh,[ Model.fname '_param_density' int2str(plt) ],DynareOptions.nodisplay,DynareOptions.graph_format);
     if TeX
         % TeX eps loader file
         fprintf(fidTeX,'\\begin{figure}[H]\n');
