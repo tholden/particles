@@ -75,7 +75,7 @@ c = cumsum(weights);
 % Draw a starting point.
 if kitagawa_resampling
     randvec = (transpose(1:number_of_particles)-1+noise(:))/number_of_particles ;
-else 
+else
     randvec = fliplr(cumprod(noise.^(1./(number_of_particles:-1:1))));
 end
 

@@ -1,4 +1,4 @@
-function [StateMu,StateSqrtP,StateWeights] = fit_gaussian_mixture(X,X_weights,StateMu,StateSqrtP,StateWeights,crit,niters,check) 
+function [StateMu,StateSqrtP,StateWeights] = fit_gaussian_mixture(X,X_weights,StateMu,StateSqrtP,StateWeights,crit,niters,check)
 
 % Copyright (C) 2013 Dynare Team
 %
@@ -17,36 +17,35 @@ function [StateMu,StateSqrtP,StateWeights] = fit_gaussian_mixture(X,X_weights,St
 % You should have received a copy of the GNU General Public License
 % along with Dynare.  If not, see <http://www.gnu.org/licenses/>.
 
-[dim,Ndata] = size(X);             
+[dim,Ndata] = size(X);
 M = size(StateMu,2) ;
 if check                        % Ensure that covariances don't collapse
-  MIN_COVAR_SQRT = sqrt(eps);
-  init_covars = StateSqrtP;
+    MIN_COVAR_SQRT = sqrt(eps);
+    init_covars = StateSqrtP;
 end
 eold = -Inf;
 for n=1:niters
-  % Calculate posteriors based on old parameters
-  [prior,likelihood,marginal,posterior] = probability3(StateMu,StateSqrtP,StateWeights,X,X_weights);
-  e = sum(log(marginal));
-  if (n > 1 && abs((e - eold)/eold) < crit)
-    return;
-  else
-    eold = e;
-  end
-  new_pr = (sum(posterior,2))';
-  StateWeights = new_pr/Ndata;
-  StateMu = bsxfun(@rdivide,(posterior*X')',new_pr);
-  for j=1:M
-    diffs = bsxfun(@minus,X,StateMu(:,j));
-    tpost = (1/sqrt(new_pr(j)))*sqrt(posterior(j,:));
-    diffs = bsxfun(@times,diffs,tpost);
-    [foo,tcov] = qr2(diffs',0);
-    StateSqrtP(:,:,j) = tcov';
-    if check
-      if min(abs(diag(StateSqrtP(:,:,j)))) < MIN_COVAR_SQRT
-        StateSqrtP(:,:,j) = init_covars(:,:,j);
-      end
+    % Calculate posteriors based on old parameters
+    [prior,likelihood,marginal,posterior] = probability3(StateMu,StateSqrtP,StateWeights,X,X_weights);
+    e = sum(log(marginal));
+    if (n > 1 && abs((e - eold)/eold) < crit)
+        return;
+    else
+        eold = e;
     end
-  end
-end     
-
+    new_pr = (sum(posterior,2))';
+    StateWeights = new_pr/Ndata;
+    StateMu = bsxfun(@rdivide,(posterior*X')',new_pr);
+    for j=1:M
+        diffs = bsxfun(@minus,X,StateMu(:,j));
+        tpost = (1/sqrt(new_pr(j)))*sqrt(posterior(j,:));
+        diffs = bsxfun(@times,diffs,tpost);
+        [foo,tcov] = qr2(diffs',0);
+        StateSqrtP(:,:,j) = tcov';
+        if check
+            if min(abs(diag(StateSqrtP(:,:,j)))) < MIN_COVAR_SQRT
+                StateSqrtP(:,:,j) = init_covars(:,:,j);
+            end
+        end
+    end
+end

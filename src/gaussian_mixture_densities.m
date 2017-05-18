@@ -1,8 +1,8 @@
 function  IncrementalWeights = gaussian_mixture_densities(obs,StateMuPrior,StateSqrtPPrior,StateWeightsPrior,...
-                                                              StateMuPost,StateSqrtPPost,StateWeightsPost,...
-                                                              StateParticles,H,normconst,weigths1,weigths2,ReducedForm,ThreadsOptions)                                                                 
+                                                  StateMuPost,StateSqrtPPost,StateWeightsPost,...
+                                                  StateParticles,H,normconst,weigths1,weigths2,ReducedForm,ThreadsOptions)
 %
-% Elements to calculate the importance sampling ratio 
+% Elements to calculate the importance sampling ratio
 %
 % INPUTS
 %    reduced_form_model     [structure] Matlab's structure describing the reduced form model.
@@ -38,11 +38,11 @@ function  IncrementalWeights = gaussian_mixture_densities(obs,StateMuPrior,State
 % You should have received a copy of the GNU General Public License
 % along with Dynare.  If not, see <http://www.gnu.org/licenses/>.
 
-% Compute the density of particles under the prior distribution 
-[ras,ras,prior] = probability(StateMuPrior,StateSqrtPPrior,StateWeightsPrior,StateParticles) ;	
+% Compute the density of particles under the prior distribution
+[ras,ras,prior] = probability(StateMuPrior,StateSqrtPPrior,StateWeightsPrior,StateParticles) ;
 prior = prior' ;
-% Compute the density of particles under the proposal distribution 
-[ras,ras,proposal] = probability(StateMuPost,StateSqrtPPost,StateWeightsPost,StateParticles) ;			
+% Compute the density of particles under the proposal distribution
+[ras,ras,proposal] = probability(StateMuPost,StateSqrtPPost,StateWeightsPost,StateParticles) ;
 proposal = proposal' ;
 % Compute the density of the current observation conditionally to each particle
 yt_t_1_i = measurement_equations(StateParticles,ReducedForm,ThreadsOptions) ;
@@ -52,6 +52,5 @@ tmp = bsxfun(@minus,yt_t_1_i,yt_t_1) ;
 Pyy = bsxfun(@times,weigths2',tmp)*tmp' + H ;
 sqr_det = sqrt(det(Pyy)) ;
 foo = (eta_t_i/Pyy).*eta_t_i ;
-likelihood = exp(-0.5*sum(foo,2))/(normconst*sqr_det) + 1e-99 ;			
+likelihood = exp(-0.5*sum(foo,2))/(normconst*sqr_det) + 1e-99 ;
 IncrementalWeights = likelihood.*prior./proposal ;
-

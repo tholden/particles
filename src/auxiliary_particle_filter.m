@@ -1,6 +1,6 @@
 function [LIK,lik] = auxiliary_particle_filter(ReducedForm,Y,start,ParticleOptions,ThreadsOptions)
 
-% Evaluates the likelihood of a nonlinear model with the auxiliary particle filter 
+% Evaluates the likelihood of a nonlinear model with the auxiliary particle filter
 % allowing eventually resampling.
 %
 % Copyright (C) 2011-2015 Dynare Team
@@ -91,11 +91,11 @@ end
 %     [nodes,nodes_weights,nodes_weights_c] = unscented_sigma_points(number_of_structural_innovations,ParticleOptions);
 % else
 %     error('Estimation: This approximation for the proposal is not implemented or unknown!')
-% end    
+% end
 % nodes = (Q_lower_triangular_cholesky*(nodes'))' ;
 
 nodes = zeros(1,number_of_structural_innovations) ;
-nodes_weights = ones(number_of_structural_innovations,1) ;   
+nodes_weights = ones(number_of_structural_innovations,1) ;
 
 for t=1:sample_size
     yhat = bsxfun(@minus,StateVectors,state_variables_steady_state);
@@ -126,7 +126,7 @@ for t=1:sample_size
         yhat_ = yhat_(:,indx) ;
     end
     yhat = yhat(:,indx) ;
-    weights_stage_1 = weights(indx)./tau_tilde(indx) ; 
+    weights_stage_1 = weights(indx)./tau_tilde(indx) ;
     epsilon = Q_lower_triangular_cholesky*randn(number_of_structural_innovations,number_of_particles);
     if pruning
         [tmp, tmp_] = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,ThreadsOptions.local_state_space_iteration_2);
@@ -137,7 +137,7 @@ for t=1:sample_size
     StateVectors = tmp(mf0,:);
     PredictionError = bsxfun(@minus,Y(:,t),tmp(mf1,:));
     weights_stage_2 = weights_stage_1.*(exp(-.5*(const_lik+sum(PredictionError.*(H\PredictionError),1))) + 1e-99) ;
-    lik(t) = log(mean(weights_stage_2)) ;  
+    lik(t) = log(mean(weights_stage_2)) ;
     weights = weights_stage_2/sum(weights_stage_2);
     if (ParticleOptions.resampling.status.generic && neff(weights)<ParticleOptions.resampling.threshold*sample_size) || ParticleOptions.resampling.status.systematic
         if pruning

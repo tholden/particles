@@ -1,24 +1,24 @@
 function [LIK,lik] = conditional_particle_filter(ReducedForm,Y,start,ParticleOptions,ThreadsOptions)
-% 
+%
 % Evaluates the likelihood of a non-linear model with a particle filter
-% - the proposal is built using the Kalman updating step for each particle. 
-% - we need draws in the errors distributions 
-% Whether we use Monte-Carlo draws from a multivariate gaussian distribution 
-% as in Amisano & Tristani (JEDC 2010). 
-% Whether we use multidimensional Gaussian sparse grids approximations: 
-% - a univariate Kronrod-Paterson Gaussian quadrature combined by the Smolyak 
-% operator (ref: Winschel & Kratzig, 2010). 
+% - the proposal is built using the Kalman updating step for each particle.
+% - we need draws in the errors distributions
+% Whether we use Monte-Carlo draws from a multivariate gaussian distribution
+% as in Amisano & Tristani (JEDC 2010).
+% Whether we use multidimensional Gaussian sparse grids approximations:
+% - a univariate Kronrod-Paterson Gaussian quadrature combined by the Smolyak
+% operator (ref: Winschel & Kratzig, 2010).
 % - a spherical-radial cubature (ref: Arasaratnam & Haykin, 2009a,2009b).
-% - a scaled unscented transform cubature (ref: Julier & Uhlmann 1997, van der 
+% - a scaled unscented transform cubature (ref: Julier & Uhlmann 1997, van der
 % Merwe & Wan 2003).
-% 
-% Pros: 
-% - Allows using current observable information in the proposal 
-% - The use of sparse grids Gaussian approximation is much faster than the Monte-Carlo approach 
-% Cons: 
-% - The use of the Kalman updating step may biais the proposal distribution since 
+%
+% Pros:
+% - Allows using current observable information in the proposal
+% - The use of sparse grids Gaussian approximation is much faster than the Monte-Carlo approach
+% Cons:
+% - The use of the Kalman updating step may biais the proposal distribution since
 % it has been derived in a linear context and is implemented in a nonlinear
-% context. That is why particle resampling is performed. 
+% context. That is why particle resampling is performed.
 %
 % INPUTS
 %    reduced_form_model     [structure] Matlab's structure describing the reduced form model.
@@ -58,8 +58,8 @@ function [LIK,lik] = conditional_particle_filter(ReducedForm,Y,start,ParticleOpt
 %           stephane DOT adjemian AT univ DASH lemans DOT fr
 
 persistent init_flag mf1
-persistent number_of_particles 
-persistent sample_size number_of_observed_variables 
+persistent number_of_particles
+persistent sample_size number_of_observed_variables
 
 % Set default
 if isempty(start)
@@ -82,14 +82,14 @@ if isempty(H)
     H = 0;
     H_lower_triangular_cholesky = 0;
 else
-    H_lower_triangular_cholesky = chol(H)'; 
+    H_lower_triangular_cholesky = chol(H)';
 end
 
 % Get initial condition for the state vector.
 StateVectorMean = ReducedForm.StateVectorMean;
 StateVectorVarianceSquareRoot = chol(ReducedForm.StateVectorVariance)';
 state_variance_rank = size(StateVectorVarianceSquareRoot,2);
-Q_lower_triangular_cholesky = chol(Q)'; 
+Q_lower_triangular_cholesky = chol(Q)';
 
 % Set seed for randn().
 set_dynare_seed('default');
@@ -102,13 +102,13 @@ ks = 0 ;
 StateParticles = bsxfun(@plus,StateVectorVarianceSquareRoot*randn(state_variance_rank,number_of_particles),StateVectorMean);
 SampleWeights = ones(1,number_of_particles)/number_of_particles ;
 for t=1:sample_size
-    for i=1:number_of_particles 
-      [StateParticles(:,i),SampleWeights(i)] = ...
-          conditional_filter_proposal(ReducedForm,Y(:,t),StateParticles(:,i),SampleWeights(i),Q_lower_triangular_cholesky,H_lower_triangular_cholesky,H,ParticleOptions,ThreadsOptions,normconst2) ;
+    for i=1:number_of_particles
+        [StateParticles(:,i),SampleWeights(i)] = ...
+            conditional_filter_proposal(ReducedForm,Y(:,t),StateParticles(:,i),SampleWeights(i),Q_lower_triangular_cholesky,H_lower_triangular_cholesky,H,ParticleOptions,ThreadsOptions,normconst2) ;
     end
     SumSampleWeights = sum(SampleWeights) ;
-    lik(t) = log(SumSampleWeights) ; 
-    SampleWeights = SampleWeights./SumSampleWeights ;		
+    lik(t) = log(SumSampleWeights) ;
+    SampleWeights = SampleWeights./SumSampleWeights ;
     if (ParticleOptions.resampling.status.generic && neff(SampleWeights)<ParticleOptions.resampling.threshold*sample_size) || ParticleOptions.resampling.status.systematic
         ks = ks + 1 ;
         StateParticles = resample(StateParticles',SampleWeights',ParticleOptions)';

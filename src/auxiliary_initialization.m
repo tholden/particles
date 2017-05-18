@@ -87,7 +87,7 @@ yhat = bsxfun(@minus,StateVectors,state_variables_steady_state);
 %    yhat_ = bsxfun(@minus,StateVectors_,state_variables_steady_state);
 %    [tmp, tmp_] = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,ThreadsOptions.local_state_space_iteration_2);
 %else
-    tmp = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,ThreadsOptions.local_state_space_iteration_2);
+tmp = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,number_of_particles),ghx,ghu,constant,ghxx,ghuu,ghxu,ThreadsOptions.local_state_space_iteration_2);
 %end
 PredictedObservedMean = weights*(tmp(mf1,:)');
 PredictionError = bsxfun(@minus,Y(:,t),tmp(mf1,:));

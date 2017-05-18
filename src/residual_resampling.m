@@ -76,33 +76,33 @@ iWEIGHTS = fix(WEIGHTS);
 number_of_trials = number_of_particles-sum(iWEIGHTS);
 
 if number_of_trials
-  WEIGHTS = (WEIGHTS-iWEIGHTS)/number_of_trials;
-  EmpiricalCDF = cumsum(WEIGHTS);
-  if kitagawa_resampling
-    u = (transpose(1:number_of_trials)-1+noise(:))/number_of_trials;  
-  else 
-    u = fliplr(cumprod(noise(1:number_of_trials).^(1./(number_of_trials:-1:1))));
-  end
-  j=1;
-  for i=1:number_of_trials
-    while (u(i)>EmpiricalCDF(j))
-      j=j+1;
+    WEIGHTS = (WEIGHTS-iWEIGHTS)/number_of_trials;
+    EmpiricalCDF = cumsum(WEIGHTS);
+    if kitagawa_resampling
+        u = (transpose(1:number_of_trials)-1+noise(:))/number_of_trials;
+    else
+        u = fliplr(cumprod(noise(1:number_of_trials).^(1./(number_of_trials:-1:1))));
     end
-    iWEIGHTS(j)=iWEIGHTS(j)+1;
-    if kitagawa_resampling==0
-       j=1; 
+    j=1;
+    for i=1:number_of_trials
+        while (u(i)>EmpiricalCDF(j))
+            j=j+1;
+        end
+        iWEIGHTS(j)=iWEIGHTS(j)+1;
+        if kitagawa_resampling==0
+            j=1;
+        end
     end
-  end
 end
 
 k=1;
 for i=1:number_of_particles
-  if (iWEIGHTS(i)>0)
-    for j=k:k+iWEIGHTS(i)-1
-      indx(j) = jndx(i);
+    if (iWEIGHTS(i)>0)
+        for j=k:k+iWEIGHTS(i)-1
+            indx(j) = jndx(i);
+        end
     end
-  end
-  k = k + iWEIGHTS(i);
+    k = k + iWEIGHTS(i);
 end
 
 if particles==0

@@ -185,18 +185,18 @@ if EstimatedParameters.ncx
         Q(k2,k1) = Q(k1,k2);
     end
     % Try to compute the cholesky decomposition of Q (possible iff Q is positive definite)
-%    [CholQ,testQ] = chol(Q);
-%    if testQ
-        % The variance-covariance matrix of the structural innovations is not definite positive. We have to compute the eigenvalues of this matrix in order to build the endogenous penalty.
-%        a = diag(eig(Q));
-%        k = find(a < 0);
-%        if k > 0
-%            fval = objective_function_penalty_base+sum(-a(k));
-%            exit_flag = 0;
-%            info = 43;
-%            return
-%        end
-%    end
+    %    [CholQ,testQ] = chol(Q);
+    %    if testQ
+    % The variance-covariance matrix of the structural innovations is not definite positive. We have to compute the eigenvalues of this matrix in order to build the endogenous penalty.
+    %        a = diag(eig(Q));
+    %        k = find(a < 0);
+    %        if k > 0
+    %            fval = objective_function_penalty_base+sum(-a(k));
+    %            exit_flag = 0;
+    %            info = 43;
+    %            return
+    %        end
+    %    end
     offset = offset+EstimatedParameters.ncx;
 end
 
@@ -210,18 +210,18 @@ if EstimatedParameters.ncn
         H(k2,k1) = H(k1,k2);
     end
     % Try to compute the cholesky decomposition of H (possible iff H is positive definite)
-%    [CholH,testH] = chol(H);
-%    if testH
-        % The variance-covariance matrix of the measurement errors is not definite positive. We have to compute the eigenvalues of this matrix in order to build the endogenous penalty.
-%        a = diag(eig(H));
-%        k = find(a < 0);
-%        if k > 0
-%            fval = objective_function_penalty_base+sum(-a(k));
-%            exit_flag = 0;
-%            info = 44;
-%            return
-%        end
-%    end
+    %    [CholH,testH] = chol(H);
+    %    if testH
+    % The variance-covariance matrix of the measurement errors is not definite positive. We have to compute the eigenvalues of this matrix in order to build the endogenous penalty.
+    %        a = diag(eig(H));
+    %        k = find(a < 0);
+    %        if k > 0
+    %            fval = objective_function_penalty_base+sum(-a(k));
+    %            exit_flag = 0;
+    %            info = 44;
+    %            return
+    %        end
+    %    end
     offset = offset+EstimatedParameters.ncn;
 end
 
@@ -244,7 +244,7 @@ Model.H = H;
 %disp(info)
 
 if info(1) ~= 0
-    ReducedForm = 0 ; 
+    ReducedForm = 0 ;
     exit_flag = 55;
     return
 end
@@ -312,7 +312,7 @@ if DynareOptions.order>1
     ReducedForm.ghuu = dr.ghuu(restrict_variables_idx,:);
     ReducedForm.ghxu = dr.ghxu(restrict_variables_idx,:);
     ReducedForm.constant = ReducedForm.steadystate + .5*dr.ghs2(restrict_variables_idx);
-else 
+else
     ReducedForm.ghxx = zeros(size(restrict_variables_idx,1),size(dr.kstate,2));
     ReducedForm.ghuu = zeros(size(restrict_variables_idx,1),size(dr.ghu,2));
     ReducedForm.ghxu = zeros(size(restrict_variables_idx,1),size(dr.ghx,2));
@@ -325,7 +325,7 @@ ReducedForm.mf0 = mf0;
 ReducedForm.mf1 = mf1;
 
 % Set initial condition for t=1
-if observation_number==1 
+if observation_number==1
     switch DynareOptions.particle.initialization
       case 1% Initial state vector covariance is the ergodic variance associated to the first order Taylor-approximation of the model.
         StateVectorMean = ReducedForm.constant(mf0);

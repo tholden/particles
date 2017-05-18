@@ -1,12 +1,12 @@
 function [StateMuPrior,StateSqrtPPrior,StateWeightsPrior,StateMuPost,StateSqrtPPost,StateWeightsPost] =...
-                gaussian_mixture_filter_bank(ReducedForm,obs,StateMu,StateSqrtP,StateWeights,...
-                                                                StructuralShocksMu,StructuralShocksSqrtP,StructuralShocksWeights,...
-                                                                ObservationShocksMu,ObservationShocksSqrtP,ObservationShocksWeights,...
-                                                                H,H_lower_triangular_cholesky,normfactO,ParticleOptions,ThreadsOptions) 
+    gaussian_mixture_filter_bank(ReducedForm,obs,StateMu,StateSqrtP,StateWeights,...
+                                 StructuralShocksMu,StructuralShocksSqrtP,StructuralShocksWeights,...
+                                 ObservationShocksMu,ObservationShocksSqrtP,ObservationShocksWeights,...
+                                 H,H_lower_triangular_cholesky,normfactO,ParticleOptions,ThreadsOptions)
 %
 % Computes the proposal with a gaussian approximation for importance
-% sampling 
-% This proposal is a gaussian distribution calculated à la Kalman 
+% sampling
+% This proposal is a gaussian distribution calculated à la Kalman
 %
 % INPUTS
 %    reduced_form_model     [structure] Matlab's structure describing the reduced form model.
@@ -43,8 +43,8 @@ function [StateMuPrior,StateSqrtPPrior,StateWeightsPrior,StateMuPost,StateSqrtPP
 
 
 persistent init_flag2 mf0 mf1 %nodes3 weights3 weights_c3
-persistent number_of_state_variables number_of_observed_variables 
-persistent number_of_structural_innovations 
+persistent number_of_state_variables number_of_observed_variables
+persistent number_of_structural_innovations
 
 % Set local state space model (first-order approximation).
 ghx  = ReducedForm.ghx;
@@ -55,8 +55,8 @@ ghuu = ReducedForm.ghuu;
 ghxu = ReducedForm.ghxu;
 
 if any(any(isnan(ghx))) || any(any(isnan(ghu))) || any(any(isnan(ghxx))) || any(any(isnan(ghuu))) || any(any(isnan(ghxu))) || ...
-    any(any(isinf(ghx))) || any(any(isinf(ghu))) || any(any(isinf(ghxx))) || any(any(isinf(ghuu))) || any(any(isinf(ghxu))) ...
-    any(any(abs(ghx)>1e4)) || any(any(abs(ghu)>1e4)) || any(any(abs(ghxx)>1e4)) || any(any(abs(ghuu)>1e4)) || any(any(abs(ghxu)>1e4))
+        any(any(isinf(ghx))) || any(any(isinf(ghu))) || any(any(isinf(ghxx))) || any(any(isinf(ghuu))) || any(any(isinf(ghxu))) ...
+        any(any(abs(ghx)>1e4)) || any(any(abs(ghu)>1e4)) || any(any(abs(ghxx)>1e4)) || any(any(abs(ghuu)>1e4)) || any(any(abs(ghxu)>1e4))
     ghx
     ghu
     ghxx
