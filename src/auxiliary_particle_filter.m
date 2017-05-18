@@ -3,7 +3,7 @@ function [LIK,lik] = auxiliary_particle_filter(ReducedForm,Y,start,ParticleOptio
 % Evaluates the likelihood of a nonlinear model with the auxiliary particle filter
 % allowing eventually resampling.
 %
-% Copyright (C) 2011-2015 Dynare Team
+% Copyright (C) 2011-2017 Dynare Team
 %
 % This file is part of Dynare (particles module).
 %

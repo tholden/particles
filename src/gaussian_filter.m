@@ -30,7 +30,7 @@ function [LIK,lik] = gaussian_filter(ReducedForm, Y, start, ParticleOptions, Thr
 %
 % NOTES
 %   The vector "lik" is used to evaluate the jacobian of the likelihood.
-% Copyright (C) 2009-2015 Dynare Team
+% Copyright (C) 2009-2017 Dynare Team
 %
 % This file is part of Dynare.
 %

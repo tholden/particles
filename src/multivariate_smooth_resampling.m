@@ -38,7 +38,7 @@ function new_particles = multivariate_smooth_resampling(particles,weights)
 %! @end deftypefn
 %@eod:
 
-% Copyright (C) 2012-2013 Dynare Team
+% Copyright (C) 2012-2017 Dynare Team
 %
 % This file is part of Dynare.
 %

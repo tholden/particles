@@ -2,7 +2,7 @@ function [LIK,lik] = sequential_importance_particle_filter(ReducedForm,Y,start,P
 
 % Evaluates the likelihood of a nonlinear model with a particle filter (optionally with resampling).
 
-% Copyright (C) 2011-2014 Dynare Team
+% Copyright (C) 2011-2015 Dynare Team
 %
 % This file is part of Dynare (particles module).
 %

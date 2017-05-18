@@ -14,7 +14,7 @@ function [density] = probability2(mu,S,X)
 %
 % NOTES
 %
-% Copyright (C) 2009-2012 Dynare Team
+% Copyright (C) 2009-2017 Dynare Team
 %
 % This file is part of Dynare.
 %

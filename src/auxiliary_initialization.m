@@ -2,7 +2,7 @@ function initial_distribution = auxiliary_initialization(ReducedForm,Y,start,Par
 
 % Evaluates the likelihood of a nonlinear model with a particle filter allowing eventually resampling.
 
-% Copyright (C) 2011-2014 Dynare Team
+% Copyright (C) 2011-2017 Dynare Team
 %
 % This file is part of Dynare (particles module).
 %
