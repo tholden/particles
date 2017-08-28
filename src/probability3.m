@@ -1,6 +1,6 @@
 function [prior,likelihood,C,posterior] = probability3(mu,sqrtP,prior,X,X_weights)
 
-% Copyright (C) 2013 Dynare Team
+% Copyright (C) 2013-2017 Dynare Team
 %
 % This file is part of Dynare.
 %
@@ -17,23 +17,23 @@ function [prior,likelihood,C,posterior] = probability3(mu,sqrtP,prior,X,X_weight
 % You should have received a copy of the GNU General Public License
 % along with Dynare.  If not, see <http://www.gnu.org/licenses/>.
 
-[dim,nov] = size(X);              
+[dim,nov] = size(X);
 M = size(mu,2) ;
 if nargout>1
-  likelihood = zeros(M,nov);        
-  normfact = (2*pi)^(dim/2);  
-  for k=1:M
-    XX = bsxfun(@minus,X,mu(:,k));
-    S = sqrtP(:,:,k);
-    foo = S \ XX;
-    likelihood(k,:) = exp(-0.5*sum(foo.*foo, 1))/abs((normfact*prod(diag(S))));
-  end
+    likelihood = zeros(M,nov);
+    normfact = (2*pi)^(dim/2);
+    for k=1:M
+        XX = bsxfun(@minus,X,mu(:,k));
+        S = sqrtP(:,:,k);
+        foo = S \ XX;
+        likelihood(k,:) = exp(-0.5*sum(foo.*foo, 1))/abs((normfact*prod(diag(S))));
+    end
 end
 wlikelihood = bsxfun(@times,X_weights,likelihood) + 1e-99;
 if nargout>2
-  C = prior*wlikelihood + 1e-99;                   
+    C = prior*wlikelihood + 1e-99;
 end
 if nargout>3
-  posterior = bsxfun(@rdivide,bsxfun(@times,prior',wlikelihood),C) + 1e-99 ;
-  posterior = bsxfun(@rdivide,posterior,sum(posterior,1));
+    posterior = bsxfun(@rdivide,bsxfun(@times,prior',wlikelihood),C) + 1e-99 ;
+    posterior = bsxfun(@rdivide,posterior,sum(posterior,1));
 end

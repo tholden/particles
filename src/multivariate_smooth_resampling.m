@@ -38,7 +38,7 @@ function new_particles = multivariate_smooth_resampling(particles,weights)
 %! @end deftypefn
 %@eod:
 
-% Copyright (C) 2012-2013 Dynare Team
+% Copyright (C) 2012-2017 Dynare Team
 %
 % This file is part of Dynare.
 %
@@ -63,10 +63,10 @@ number_of_states = size(particles,2);
 [P,D] = eig(particles'*(bsxfun(@times,1/number_of_particles,particles))) ;
 D = diag(D) ;
 vectors = bsxfun(@times,P,sqrt(D)') ;
-orthogonalized_particles = bsxfun(@rdivide,particles*vectors,D') ; 
+orthogonalized_particles = bsxfun(@rdivide,particles*vectors,D') ;
 new_particles = zeros(number_of_particles,number_of_states) ;
 for j=1:number_of_states
-  tout = sortrows( [orthogonalized_particles(:,j) weights],1) ;
-  new_particles(:,j) = univariate_smooth_resampling(tout(:,2),tout(:,1),number_of_particles) ;
+    tout = sortrows( [orthogonalized_particles(:,j) weights],1) ;
+    new_particles(:,j) = univariate_smooth_resampling(tout(:,2),tout(:,1),number_of_particles) ;
 end
 new_particles = new_particles*(vectors') ;

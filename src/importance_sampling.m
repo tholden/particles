@@ -1,6 +1,6 @@
 function State_Particles = importance_sampling(StateMuPost,StateSqrtPPost,StateWeightsPost,numP)
 
-% Copyright (C) 2013 Dynare Team
+% Copyright (C) 2013-2017 Dynare Team
 %
 % This file is part of Dynare.
 %
@@ -17,13 +17,12 @@ function State_Particles = importance_sampling(StateMuPost,StateSqrtPPost,StateW
 % You should have received a copy of the GNU General Public License
 % along with Dynare.  If not, see <http://www.gnu.org/licenses/>.
 
-[Xdim,Gsecond] = size(StateMuPost) ;  
+[Xdim,Gsecond] = size(StateMuPost) ;
 u = rand(numP,1);
-[Nc,comp] = histc(u, cumsum([0; StateWeightsPost]));    
+[Nc,comp] = histc(u, cumsum([0; StateWeightsPost]));
 State_Particles = zeros(Xdim,numP);
 for k=1:Gsecond
-  idx = bsxfun(@eq,comp,k*ones(size(comp))) ;
-  State_Particles(:,idx) = StateSqrtPPost(:,:,k)*randn(Xdim,Nc(k));
+    idx = bsxfun(@eq,comp,k*ones(size(comp))) ;
+    State_Particles(:,idx) = StateSqrtPPost(:,:,k)*randn(Xdim,Nc(k));
 end
-State_Particles= State_Particles + StateMuPost(:,comp); 
-    
+State_Particles= State_Particles + StateMuPost(:,comp);

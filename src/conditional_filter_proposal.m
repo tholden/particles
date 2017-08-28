@@ -18,7 +18,7 @@ function [ProposalStateVector,Weights] = conditional_filter_proposal(ReducedForm
 %
 % NOTES
 %   The vector "lik" is used to evaluate the jacobian of the likelihood.
-% Copyright (C) 2012-2013 Dynare Team
+% Copyright (C) 2012-2017 Dynare Team
 %
 % This file is part of Dynare.
 %
@@ -51,8 +51,8 @@ ghuu = ReducedForm.ghuu;
 ghxu = ReducedForm.ghxu;
 
 if any(any(isnan(ghx))) || any(any(isnan(ghu))) || any(any(isnan(ghxx))) || any(any(isnan(ghuu))) || any(any(isnan(ghxu))) || ...
-    any(any(isinf(ghx))) || any(any(isinf(ghu))) || any(any(isinf(ghxx))) || any(any(isinf(ghuu))) || any(any(isinf(ghxu))) ...
-    any(any(abs(ghx)>1e4)) || any(any(abs(ghu)>1e4)) || any(any(abs(ghxx)>1e4)) || any(any(abs(ghuu)>1e4)) || any(any(abs(ghxu)>1e4))
+        any(any(isinf(ghx))) || any(any(isinf(ghu))) || any(any(isinf(ghxx))) || any(any(isinf(ghuu))) || any(any(isinf(ghxu))) ...
+        any(any(abs(ghx)>1e4)) || any(any(abs(ghu)>1e4)) || any(any(abs(ghxx)>1e4)) || any(any(abs(ghuu)>1e4)) || any(any(abs(ghxu)>1e4))
     ghx
     ghu
     ghxx
@@ -106,7 +106,7 @@ if ParticleOptions.proposal_approximation.cubature || ParticleOptions.proposal_a
     Error = obs - PredictedObservedMean ;
     StateVectorMean = PredictedStateMean + (CovarianceObservedStateSquareRoot/PredictedObservedVarianceSquareRoot)*Error ;
     if ParticleOptions.cpf_weights_method.amisanotristani
-        Weights = SampleWeights.*probability2(zeros(number_of_observed_variables,1),PredictedObservedVarianceSquareRoot,Error) ; 
+        Weights = SampleWeights.*probability2(zeros(number_of_observed_variables,1),PredictedObservedVarianceSquareRoot,Error) ;
     end
 else
     dState = bsxfun(@minus,tmp(mf0,:),PredictedStateMean);
@@ -120,15 +120,15 @@ else
     StateVectorVariance = PredictedStateVariance - KalmanFilterGain*PredictedObservedVariance*KalmanFilterGain';
     StateVectorVarianceSquareRoot = chol(StateVectorVariance + eye(number_of_state_variables)*1e-6)' ;
     if ParticleOptions.cpf_weights_method.amisanotristani
-        Weights = SampleWeights.*probability2(zeros(number_of_observed_variables,1),chol(PredictedObservedVariance)',Error) ; 
+        Weights = SampleWeights.*probability2(zeros(number_of_observed_variables,1),chol(PredictedObservedVariance)',Error) ;
     end
 end
 
 PredictedStateVarianceSquareRoot = chol(PredictedStateVariance + eye(number_of_state_variables)*1e-6)'  ;
 ProposalStateVector = StateVectorVarianceSquareRoot*randn(size(StateVectorVarianceSquareRoot,2),1)+StateVectorMean ;
 if ParticleOptions.cpf_weights_method.murrayjonesparslow
-    Prior = probability2(PredictedStateMean,PredictedStateVarianceSquareRoot,ProposalStateVector) ; 
-    Posterior = probability2(StateVectorMean,StateVectorVarianceSquareRoot,ProposalStateVector) ; 
-    Likelihood = probability2(obs,H_lower_triangular_cholesky,measurement_equations(ProposalStateVector,ReducedForm,ThreadsOptions)) ; 
+    Prior = probability2(PredictedStateMean,PredictedStateVarianceSquareRoot,ProposalStateVector) ;
+    Posterior = probability2(StateVectorMean,StateVectorVarianceSquareRoot,ProposalStateVector) ;
+    Likelihood = probability2(obs,H_lower_triangular_cholesky,measurement_equations(ProposalStateVector,ReducedForm,ThreadsOptions)) ;
     Weights = SampleWeights.*Likelihood.*(Prior./Posterior) ;
 end

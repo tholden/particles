@@ -10,9 +10,9 @@ function [LIK,lik] = nonlinear_kalman_filter(ReducedForm, Y, start, ParticleOpti
 % from the resulting nodes/particles and allows to generate new distributions at the
 % following observation.
 % Pros: The use of nodes is much faster than Monte-Carlo Gaussian particle and standard particles
-% filters since it treats a lesser number of particles. 
-% Cons: 1. Application a linear projection formulae in a nonlinear context. 
-% 2. Parameter estimations may be biaised if the model is truly non-gaussian since predictive and 
+% filters since it treats a lesser number of particles.
+% Cons: 1. Application a linear projection formulae in a nonlinear context.
+% 2. Parameter estimations may be biaised if the model is truly non-gaussian since predictive and
 % filtered densities are unimodal.
 %
 % INPUTS
@@ -30,7 +30,7 @@ function [LIK,lik] = nonlinear_kalman_filter(ReducedForm, Y, start, ParticleOpti
 %
 % NOTES
 %   The vector "lik" is used to evaluate the jacobian of the likelihood.
-% Copyright (C) 2009-2015 Dynare Team
+% Copyright (C) 2009-2017 Dynare Team
 %
 % This file is part of Dynare.
 %
@@ -47,7 +47,7 @@ function [LIK,lik] = nonlinear_kalman_filter(ReducedForm, Y, start, ParticleOpti
 % You should have received a copy of the GNU General Public License
 % along with Dynare.  If not, see <http://www.gnu.org/licenses/>.
 
-persistent init_flag mf0 mf1 nodes weights weights_c 
+persistent init_flag mf0 mf1 nodes weights weights_c
 persistent sample_size number_of_state_variables number_of_observed_variables number_of_structural_innovations
 
 % Set default
@@ -64,8 +64,8 @@ ghuu = ReducedForm.ghuu;
 ghxu = ReducedForm.ghxu;
 
 if any(any(isnan(ghx))) || any(any(isnan(ghu))) || any(any(isnan(ghxx))) || any(any(isnan(ghuu))) || any(any(isnan(ghxu))) || ...
-    any(any(isinf(ghx))) || any(any(isinf(ghu))) || any(any(isinf(ghxx))) || any(any(isinf(ghuu))) || any(any(isinf(ghxu))) ...
-    any(any(abs(ghx)>1e4)) || any(any(abs(ghu)>1e4)) || any(any(abs(ghxx)>1e4)) || any(any(abs(ghuu)>1e4)) || any(any(abs(ghxu)>1e4))
+        any(any(isinf(ghx))) || any(any(isinf(ghu))) || any(any(isinf(ghxx))) || any(any(isinf(ghuu))) || any(any(isinf(ghxu))) ...
+        any(any(abs(ghx)>1e4)) || any(any(abs(ghu)>1e4)) || any(any(abs(ghxx)>1e4)) || any(any(abs(ghuu)>1e4)) || any(any(abs(ghxu)>1e4))
     ghx
     ghu
     ghxx
@@ -100,12 +100,12 @@ end
 
 if ParticleOptions.distribution_approximation.montecarlo
     set_dynare_seed('default');
-end 
+end
 
 % Get covariance matrices
 H = ReducedForm.H;
-H_lower_triangular_cholesky = chol(H)' ; 
-Q_lower_triangular_cholesky = chol(ReducedForm.Q)'; 
+H_lower_triangular_cholesky = chol(H)' ;
+Q_lower_triangular_cholesky = chol(ReducedForm.Q)';
 
 % Get initial condition for the state vector.
 StateVectorMean = ReducedForm.StateVectorMean;

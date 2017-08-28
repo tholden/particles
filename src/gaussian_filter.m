@@ -30,7 +30,7 @@ function [LIK,lik] = gaussian_filter(ReducedForm, Y, start, ParticleOptions, Thr
 %
 % NOTES
 %   The vector "lik" is used to evaluate the jacobian of the likelihood.
-% Copyright (C) 2009-2015 Dynare Team
+% Copyright (C) 2009-2017 Dynare Team
 %
 % This file is part of Dynare.
 %
@@ -112,18 +112,18 @@ for t=1:sample_size
     if ParticleOptions.distribution_approximation.cubature || ParticleOptions.distribution_approximation.unscented
         StateParticles = bsxfun(@plus,StateVectorMean,StateVectorVarianceSquareRoot*nodes2') ;
         IncrementalWeights = ...
-                    gaussian_densities(Y(:,t),StateVectorMean,...
-                                        StateVectorVarianceSquareRoot,PredictedStateMean,...
-                                        PredictedStateVarianceSquareRoot,StateParticles,H,const_lik,...
-                                        weights2,weights_c2,ReducedForm,ThreadsOptions) ;
+            gaussian_densities(Y(:,t),StateVectorMean,...
+                               StateVectorVarianceSquareRoot,PredictedStateMean,...
+                               PredictedStateVarianceSquareRoot,StateParticles,H,const_lik,...
+                               weights2,weights_c2,ReducedForm,ThreadsOptions) ;
         SampleWeights = weights2.*IncrementalWeights ;
-    else 
+    else
         StateParticles = bsxfun(@plus,StateVectorVarianceSquareRoot*randn(state_variance_rank,number_of_particles),StateVectorMean) ;
         IncrementalWeights = ...
-                    gaussian_densities(Y(:,t),StateVectorMean,...
-                                        StateVectorVarianceSquareRoot,PredictedStateMean,...
-                                        PredictedStateVarianceSquareRoot,StateParticles,H,const_lik,...
-                                        1/number_of_particles,1/number_of_particles,ReducedForm,ThreadsOptions) ;
+            gaussian_densities(Y(:,t),StateVectorMean,...
+                               StateVectorVarianceSquareRoot,PredictedStateMean,...
+                               PredictedStateVarianceSquareRoot,StateParticles,H,const_lik,...
+                               1/number_of_particles,1/number_of_particles,ReducedForm,ThreadsOptions) ;
         SampleWeights = IncrementalWeights/number_of_particles ;
     end
     SampleWeights = SampleWeights + 1e-6*ones(size(SampleWeights,1),1) ;
@@ -132,9 +132,9 @@ for t=1:sample_size
     SampleWeights = SampleWeights./SumSampleWeights ;
     if not(ParticleOptions.distribution_approximation.cubature || ParticleOptions.distribution_approximation.unscented)
         if (ParticleOptions.resampling.status.generic && neff(SampleWeights)<ParticleOptions.resampling.threshold*sample_size) || ParticleOptions.resampling.status.systematic
-            StateParticles = resample(StateParticles',SampleWeights,ParticleOptions)' ; 
+            StateParticles = resample(StateParticles',SampleWeights,ParticleOptions)' ;
             SampleWeights = ones(number_of_particles,1)/number_of_particles;
-        end 
+        end
     end
     StateVectorMean = StateParticles*SampleWeights ;
     temp = bsxfun(@minus,StateParticles,StateVectorMean) ;

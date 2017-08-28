@@ -1,7 +1,7 @@
-function [density] = probability2(mu,S,X) 
+function [density] = probability2(mu,S,X)
 %
 % Multivariate gaussian density
-% 
+%
 % INPUTS
 %    n                  [integer]   scalar, number of variables.
 %
@@ -10,11 +10,11 @@ function [density] = probability2(mu,S,X)
 %    weigths        [double]    associated weigths
 %
 % REFERENCES
-% 
+%
 %
 % NOTES
-% 
-% Copyright (C) 2009-2012 Dynare Team
+%
+% Copyright (C) 2009-2017 Dynare Team
 %
 % This file is part of Dynare.
 %
@@ -31,7 +31,7 @@ function [density] = probability2(mu,S,X)
 % You should have received a copy of the GNU General Public License
 % along with Dynare.  If not, see <http://www.gnu.org/licenses/>.
 
-dim = size(X,1) ;              
-normfact = bsxfun(@power,(2*pi),(dim/2)) ;  
+dim = size(X,1) ;
+normfact = bsxfun(@power,(2*pi),(dim/2)) ;
 foo = S\(bsxfun(@minus,X,mu)) ;
 density = exp(-0.5*sum(foo.*foo)')./abs((normfact*prod(diag(S)))) + 1e-99 ;

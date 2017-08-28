@@ -34,7 +34,7 @@ function new_particles = univariate_smooth_resampling(weights,particles,number_o
 %! @end deftypefn
 %@eod:
 
-% Copyright (C) 2012 Dynare Team
+% Copyright (C) 2012-2017 Dynare Team
 %
 % This file is part of Dynare.
 %
@@ -61,16 +61,16 @@ lambda_tilde = [ (.5*weights(1)) ;
 lambda_bar = cumsum(lambda_tilde) ;
 u = rand(1,1) ;
 new_particles = zeros(number_of_new_particles,1) ;
-rj = 0 ; 
+rj = 0 ;
 i = 1 ;
 j = 1 ;
 while i<=number_of_new_particles
     u_j = ( i-1 + u)/number_of_new_particles ;
     while u_j>lambda_bar(j)
-        rj = j ; 
+        rj = j ;
         j = j+1 ;
     end
-    if rj==0 
+    if rj==0
         new_particles(i) = particles(1) ;
     elseif rj==M
         new_particles(i) = particles(M) ;

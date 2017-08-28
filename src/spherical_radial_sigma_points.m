@@ -1,7 +1,7 @@
-function [nodes,weights] = spherical_radial_sigma_points(n) 
+function [nodes,weights] = spherical_radial_sigma_points(n)
 %
-% Computes nodes and weigths from a third-degree spherical-radial cubature 
-% rule. 
+% Computes nodes and weigths from a third-degree spherical-radial cubature
+% rule.
 % INPUTS
 %    n                  [integer]   scalar, number of variables.
 %
@@ -11,11 +11,11 @@ function [nodes,weights] = spherical_radial_sigma_points(n)
 %
 % REFERENCES
 %
-% Arasaratnam & Haykin 2008,2009. 
+% Arasaratnam & Haykin 2008,2009.
 %
 % NOTES
-% 
-% Copyright (C) 2009-2012 Dynare Team
+%
+% Copyright (C) 2009-2017 Dynare Team
 %
 % This file is part of Dynare.
 %

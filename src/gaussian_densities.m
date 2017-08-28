@@ -1,6 +1,6 @@
 function IncrementalWeights = gaussian_densities(obs,mut_t,sqr_Pss_t_t,st_t_1,sqr_Pss_t_t_1,particles,H,normconst,weigths1,weigths2,ReducedForm,ThreadsOptions)
 %
-% Elements to calculate the importance sampling ratio 
+% Elements to calculate the importance sampling ratio
 %
 % INPUTS
 %    reduced_form_model     [structure] Matlab's structure describing the reduced form model.
@@ -19,7 +19,7 @@ function IncrementalWeights = gaussian_densities(obs,mut_t,sqr_Pss_t_t,st_t_1,sq
 %
 % NOTES
 %   The vector "lik" is used to evaluate the jacobian of the likelihood.
-% Copyright (C) 2009-2010 Dynare Team
+% Copyright (C) 2009-2017 Dynare Team
 %
 % This file is part of Dynare.
 %
@@ -36,11 +36,11 @@ function IncrementalWeights = gaussian_densities(obs,mut_t,sqr_Pss_t_t,st_t_1,sq
 % You should have received a copy of the GNU General Public License
 % along with Dynare.  If not, see <http://www.gnu.org/licenses/>.
 
-% proposal density			
-proposal = probability2(mut_t,sqr_Pss_t_t,particles) ;			
-% prior density 
-prior = probability2(st_t_1,sqr_Pss_t_t_1,particles) ;			
-% likelihood 
+% proposal density
+proposal = probability2(mut_t,sqr_Pss_t_t,particles) ;
+% prior density
+prior = probability2(st_t_1,sqr_Pss_t_t_1,particles) ;
+% likelihood
 yt_t_1_i = measurement_equations(particles,ReducedForm,ThreadsOptions) ;
 eta_t_i = bsxfun(@minus,obs,yt_t_1_i)' ;
 yt_t_1 = sum(yt_t_1_i*weigths1,2) ;
@@ -48,5 +48,5 @@ tmp = bsxfun(@minus,yt_t_1_i,yt_t_1) ;
 Pyy = bsxfun(@times,weigths2',tmp)*tmp' + H ;
 sqr_det = sqrt(det(Pyy)) ;
 foo = (eta_t_i/Pyy).*eta_t_i ;
-likelihood = exp(-0.5*sum(foo,2))/(normconst*sqr_det) + 1e-99 ;			
+likelihood = exp(-0.5*sum(foo,2))/(normconst*sqr_det) + 1e-99 ;
 IncrementalWeights = likelihood.*prior./proposal ;

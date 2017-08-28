@@ -33,7 +33,7 @@ function return_resample = traditional_resampling(particles,weights,noise)
 %! @end deftypefn
 %@eod:
 
-% Copyright (C) 2011-2013 Dynare Team
+% Copyright (C) 2011-2017 Dynare Team
 %
 % This file is part of Dynare.
 %
@@ -75,7 +75,7 @@ c = cumsum(weights);
 % Draw a starting point.
 if kitagawa_resampling
     randvec = (transpose(1:number_of_particles)-1+noise(:))/number_of_particles ;
-else 
+else
     randvec = fliplr(cumprod(noise.^(1./(number_of_particles:-1:1))));
 end
 
