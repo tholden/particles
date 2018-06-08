@@ -89,7 +89,11 @@ end
 
 % compute gaussian quadrature nodes and weights on states and shocks
 
-if ParticleOptions.proposal_approximation.cubature || ParticleOptions.proposal_approximation.montecarlo
+if ParticleOptions.proposal_approximation.montecarlo
+    nodes = randn(ParticleOptions.number_of_particles,number_of_state_variables+number_of_structural_innovations) ;
+    weights = 1/ParticleOptions.number_of_particles ;
+    weights_c = weights ;
+elseif ParticleOptions.proposal_approximation.cubature
     [nodes,weights] = spherical_radial_sigma_points(number_of_state_variables+number_of_structural_innovations) ;
     weights_c = weights ;
 elseif ParticleOptions.proposal_approximation.unscented
