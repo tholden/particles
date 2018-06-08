@@ -71,7 +71,11 @@ if isempty(init_flag2)
     init_flag2 = 1;
 end
 
-if ParticleOptions.proposal_approximation.cubature || ParticleOptions.proposal_approximation.montecarlo
+if ParticleOptions.proposal_approximation.montecarlo
+    nodes = randn(ParticleOptions.number_of_particles,number_of_state_variables+number_of_structural_innovations) ;
+    weights = 1/ParticleOptions.number_of_particles ;
+    weights_c = weights ;
+elseif ParticleOptions.proposal_approximation.cubature 
     [nodes,weights] = spherical_radial_sigma_points(number_of_state_variables+number_of_structural_innovations) ;
     weights_c = weights ;
 elseif ParticleOptions.proposal_approximation.unscented
@@ -118,5 +122,5 @@ else
     StateVectorMean = PredictedStateMean + KalmanFilterGain*PredictionError;
     StateVectorVariance = PredictedStateVariance - KalmanFilterGain*PredictedObservedVariance*KalmanFilterGain';
     StateVectorVariance = .5*(StateVectorVariance+StateVectorVariance');
-    StateVectorVarianceSquareRoot = chol(StateVectorVariance)'; %reduced_rank_cholesky(StateVectorVariance)';
+    StateVectorVarianceSquareRoot = reduced_rank_cholesky(StateVectorVariance)';
 end
