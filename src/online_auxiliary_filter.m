@@ -43,7 +43,7 @@ persistent start_param sample_size number_of_observed_variables number_of_struct
 % Set seed for randn().
 set_dynare_seed('default') ;
 pruning = DynareOptions.particle.pruning;
-second_resample = 0 ;
+second_resample = DynareOptions.particle.resampling.status.systematic ;
 variance_update = 1 ;
 
 % initialization of state particles
@@ -75,25 +75,31 @@ if pruning
 end
 
 % parameters for the Liu & West filter
-h_square = (3*liu_west_delta-1)/(2*liu_west_delta) ;
-h_square = 1-h_square*h_square ;
-small_a = sqrt(1-h_square) ;
+small_a = (3*liu_west_delta-1)/(2*liu_west_delta) ;
+b_square = 1-small_a*small_a ;
 
 % Initialization of parameter particles
 xparam = zeros(number_of_parameters,number_of_particles) ;
-stderr = sqrt(bsxfun(@power,bounds.ub-bounds.lb,2)/12)/100 ;
-stderr = sqrt(bsxfun(@power,bounds.ub-bounds.lb,2)/12)/50 ;
+%stderr = sqrt(bsxfun(@power,bounds.ub-bounds.lb,2)/12)/100 ;
+%stderr = sqrt(bsxfun(@power,bounds.ub-bounds.lb,2)/12)/50 ;
 %stderr = sqrt(bsxfun(@power,bounds.ub-bounds.lb,2)/12)/20 ;
-i = 1 ;
-while i<=number_of_particles
-    %candidate = start_param + .001*liu_west_chol_sigma_bar*randn(number_of_parameters,1) ;
-    candidate = start_param + bsxfun(@times,stderr,randn(number_of_parameters,1)) ;
-    if all(candidate(:) >= bounds.lb) && all(candidate(:) <= bounds.ub)
-        xparam(:,i) = candidate(:) ;
-        i = i+1 ;
+bounds = prior_bounds(BayesInfo,DynareOptions.prior_trunc); %reset bounds as lb and ub must only be operational during mode-finding
+prior_draw(BayesInfo,DynareOptions.prior_trunc);
+for i=1:number_of_particles
+    info = 1;
+    while info==1
+        %candidate = start_param + .001*liu_west_chol_sigma_bar*randn(number_of_parameters,1) ;
+        %candidate = start_param + bsxfun(@times,stderr,randn(number_of_parameters,1)) ;
+        candidate = prior_draw()';
+        if all(candidate(:) >= bounds.lb) && all(candidate(:) <= bounds.ub)
+            [ys,trend_coeff,exit_flag,info,Model,DynareOptions,BayesInfo,DynareResults,ReducedForm] = ...
+                solve_model_for_online_filter(1,candidate(:),DynareDataset,DynareOptions,Model,EstimatedParameters,BayesInfo,DynareResults) ;
+            if info==0
+                xparam(:,i) = candidate(:) ;
+            end
+        end 
     end
-end
-
+end 
 %xparam = bsxfun(@plus,bounds(:,1),bsxfun(@times,(bounds(:,2)-bounds(:,1)),rand(number_of_parameters,number_of_particles))) ;
 
 % Initialization of the weights of particles.
@@ -119,81 +125,87 @@ for t=1:sample_size
     temp = bsxfun(@minus,xparam,m_bar) ;
     sigma_bar = (bsxfun(@times,weights,temp))*(temp') ;
     if variance_update==1
-        chol_sigma_bar = chol(h_square*sigma_bar)' ;
+        chol_sigma_bar = chol(b_square*sigma_bar)' ;
     end
     % Prediction (without shocks)
+    fore_xparam = bsxfun(@plus,(1-small_a).*m_bar,small_a.*xparam) ;
     tau_tilde = zeros(1,number_of_particles) ;
     for i=1:number_of_particles
         % model resolution
         [ys,trend_coeff,exit_flag,info,Model,DynareOptions,BayesInfo,DynareResults,ReducedForm] = ...
-            solve_model_for_online_filter(t,xparam(:,i),DynareDataset,DynareOptions,Model,EstimatedParameters,BayesInfo,DynareResults) ;
-        steadystate = ReducedForm.steadystate;
-        state_variables_steady_state = ReducedForm.state_variables_steady_state;
-        % Set local state space model (second-order approximation).
-        constant = ReducedForm.constant;
-        ghx  = ReducedForm.ghx;
-        ghu  = ReducedForm.ghu;
-        ghxx = ReducedForm.ghxx;
-        ghuu = ReducedForm.ghuu;
-        ghxu = ReducedForm.ghxu;
-        % particle likelihood contribution
-        yhat = bsxfun(@minus,StateVectors(:,i),state_variables_steady_state);
-        if pruning
-            yhat_ = bsxfun(@minus,StateVectors_(:,i),state_variables_steady_state);
-            [tmp, tmp_] = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,1),ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,DynareOptions.threads.local_state_space_iteration_2);
-        else
-            tmp = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,1),ghx,ghu,constant,ghxx,ghuu,ghxu,DynareOptions.threads.local_state_space_iteration_2);
-        end
-        PredictionError = bsxfun(@minus,Y(t,:)',tmp(mf1,:));
-        % Replace Gaussian density with a Student density with 3 degrees of
-        % freedom for fat tails.
-        z = sum(PredictionError.*(ReducedForm.H\PredictionError),1) ;
-        tau_tilde(i) = weights(i).*(tpdf(z,3*ones(size(z)))+1e-99) ;
-        %tau_tilde(i) = weights(i).*exp(-.5*(const_lik+log(det(ReducedForm.H))+sum(PredictionError.*(ReducedForm.H\PredictionError),1))) ;
-    end
-    % particles selection
-    tau_tilde = tau_tilde/sum(tau_tilde)  ;
-    indx = resample(0,tau_tilde',DynareOptions.particle);
-    StateVectors = StateVectors(:,indx) ;
-    if pruning
-        StateVectors_ = StateVectors_(:,indx) ;
-    end
-    xparam = bsxfun(@plus,(1-small_a).*m_bar,small_a.*xparam(:,indx)) ;
-    w_stage1 = weights(indx)./tau_tilde(indx) ;
-    % draw in the new distributions
-    wtilde = zeros(1,number_of_particles) ;
-    i = 1 ;
-    while i<=number_of_particles
-        candidate = xparam(:,i) + chol_sigma_bar*randn(number_of_parameters,1) ;
-        if all(candidate >= bounds.lb) && all(candidate <= bounds.ub)
-            xparam(:,i) = candidate ;
-            % model resolution for new parameters particles
-            [ys,trend_coeff,exit_flag,info,Model,DynareOptions,BayesInfo,DynareResults,ReducedForm] = ...
-                solve_model_for_online_filter(t,xparam(:,i),DynareDataset,DynareOptions,Model,EstimatedParameters,BayesInfo,DynareResults) ;
+            solve_model_for_online_filter(t,fore_xparam(:,i),DynareDataset,DynareOptions,Model,EstimatedParameters,BayesInfo,DynareResults) ;
+        if info==0
             steadystate = ReducedForm.steadystate;
             state_variables_steady_state = ReducedForm.state_variables_steady_state;
-            % Set local state space model (second order approximation).
+            % Set local state space model (second-order approximation).
             constant = ReducedForm.constant;
             ghx  = ReducedForm.ghx;
             ghu  = ReducedForm.ghu;
             ghxx = ReducedForm.ghxx;
             ghuu = ReducedForm.ghuu;
             ghxu = ReducedForm.ghxu;
-            % Get covariance matrices and structural shocks
-            epsilon = chol(ReducedForm.Q)'*randn(number_of_structural_innovations,1) ;
-            % compute particles likelihood contribution
+            % particle likelihood contribution
             yhat = bsxfun(@minus,StateVectors(:,i),state_variables_steady_state);
             if pruning
                 yhat_ = bsxfun(@minus,StateVectors_(:,i),state_variables_steady_state);
-                [tmp, tmp_] = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,DynareOptions.threads.local_state_space_iteration_2);
-                StateVectors_(:,i) = tmp_(mf0,:) ;
+                [tmp, tmp_] = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,1),ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,DynareOptions.threads.local_state_space_iteration_2);
             else
-                tmp = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,DynareOptions.threads.local_state_space_iteration_2);
+                tmp = local_state_space_iteration_2(yhat,zeros(number_of_structural_innovations,1),ghx,ghu,constant,ghxx,ghuu,ghxu,DynareOptions.threads.local_state_space_iteration_2);
             end
-            StateVectors(:,i) = tmp(mf0,:) ;
             PredictionError = bsxfun(@minus,Y(t,:)',tmp(mf1,:));
-            wtilde(i) = w_stage1(i)*exp(-.5*(const_lik+log(det(ReducedForm.H))+sum(PredictionError.*(ReducedForm.H\PredictionError),1)));
-            i = i+1 ;
+            % Replace Gaussian density with a Student density with 3 degrees of
+            % freedom for fat tails.
+            z = sum(PredictionError.*(ReducedForm.H\PredictionError),1) ;
+            tau_tilde(i) = weights(i).*(tpdf(z,3*ones(size(z)))+1e-99) ;
+            %tau_tilde(i) = weights(i).*exp(-.5*(const_lik+log(det(ReducedForm.H))+sum(PredictionError.*(ReducedForm.H\PredictionError),1))) ;
+        end 
+    end
+    % particles selection
+    tau_tilde = tau_tilde/sum(tau_tilde)  ;
+    indx = resample(0,tau_tilde',DynareOptions.particle);
+    StateVectors = StateVectors(:,indx) ;
+    xparam = fore_xparam(:,indx);	
+    if pruning
+        StateVectors_ = StateVectors_(:,indx) ;
+    end
+    w_stage1 = weights(indx)./tau_tilde(indx) ;
+    % draw in the new distributions
+    wtilde = zeros(1,number_of_particles) ;
+    for i=1:number_of_particles
+        info=1 ;
+        while info==1 
+            candidate = xparam(:,i) + chol_sigma_bar*randn(number_of_parameters,1) ;
+            if all(candidate >= bounds.lb) && all(candidate <= bounds.ub)
+	                % model resolution for new parameters particles
+                [ys,trend_coeff,exit_flag,info,Model,DynareOptions,BayesInfo,DynareResults,ReducedForm] = ...
+                    solve_model_for_online_filter(t,candidate,DynareDataset,DynareOptions,Model,EstimatedParameters,BayesInfo,DynareResults) ;
+                if info==0
+                    xparam(:,i) = candidate ;
+                    steadystate = ReducedForm.steadystate;
+                    state_variables_steady_state = ReducedForm.state_variables_steady_state;
+                    % Set local state space model (second order approximation).
+                    constant = ReducedForm.constant;
+                    ghx  = ReducedForm.ghx;
+                    ghu  = ReducedForm.ghu;
+                    ghxx = ReducedForm.ghxx;
+                    ghuu = ReducedForm.ghuu;
+                    ghxu = ReducedForm.ghxu;
+                    % Get covariance matrices and structural shocks
+                    epsilon = chol(ReducedForm.Q)'*randn(number_of_structural_innovations,1) ;
+                    % compute particles likelihood contribution
+                    yhat = bsxfun(@minus,StateVectors(:,i),state_variables_steady_state);
+                    if pruning
+                        yhat_ = bsxfun(@minus,StateVectors_(:,i),state_variables_steady_state);
+                        [tmp, tmp_] = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,yhat_,steadystate,DynareOptions.threads.local_state_space_iteration_2);
+                        StateVectors_(:,i) = tmp_(mf0,:) ;
+                    else
+                        tmp = local_state_space_iteration_2(yhat,epsilon,ghx,ghu,constant,ghxx,ghuu,ghxu,DynareOptions.threads.local_state_space_iteration_2);
+                    end
+                    StateVectors(:,i) = tmp(mf0,:) ;
+                    PredictionError = bsxfun(@minus,Y(t,:)',tmp(mf1,:));
+                    wtilde(i) = w_stage1(i)*exp(-.5*(const_lik+log(det(ReducedForm.H))+sum(PredictionError.*(ReducedForm.H\PredictionError),1)));
+                end 
+            end
         end
     end
     % normalization
@@ -266,6 +278,10 @@ median_param = median_xparam(:,sample_size) ;
 TeX = DynareOptions.TeX;
 
 [nbplt,nr,nc,lr,lc,nstar] = pltorg(number_of_parameters);
+nr = ceil(sqrt(number_of_parameters)) ;
+nc = floor(sqrt(number_of_parameters));
+nbplt = 1 ;
+
 
 if TeX
     fidTeX = fopen([Model.fname '_param_traj.tex'],'w');
@@ -282,10 +298,9 @@ for plt = 1:nbplt,
         TeXNAMES = [];
     end
     hh = dyn_figure(DynareOptions.nodisplay,'Name','Parameters Trajectories');
-    for k=1:min(nstar,length(xparam)-(plt-1)*nstar)
+    for k=1:length(xparam)
         subplot(nr,nc,k)
-        kk = (plt-1)*nstar+k;
-        [name,texname] = get_the_name(kk,TeX,Model,EstimatedParameters,DynareOptions);
+        [name,texname] = get_the_name(k,TeX,Model,EstimatedParameters,DynareOptions);
         if TeX
             if isempty(NAMES)
                 NAMES = name;
@@ -295,7 +310,7 @@ for plt = 1:nbplt,
                 TeXNAMES = char(TeXNAMES,texname);
             end
         end
-        y = [mean_xparam(kk,:)' median_xparam(kk,:)' lb95_xparam(kk,:)' ub95_xparam(kk,:)' xparam(kk)*ones(sample_size,1)] ;
+        y = [mean_xparam(k,:)' median_xparam(k,:)' lb95_xparam(k,:)' ub95_xparam(k,:)' xparam(k)*ones(sample_size,1)] ;
         plot(z,y);
         hold on
         title(name,'interpreter','none')
@@ -307,7 +322,7 @@ for plt = 1:nbplt,
     if TeX
         % TeX eps loader file
         fprintf(fidTeX,'\\begin{figure}[H]\n');
-        for jj = 1:min(nstar,length(x)-(plt-1)*nstar)
+        for jj = 1:length(x)
             fprintf(fidTeX,'\\psfrag{%s}[1][][0.5][0]{%s}\n',deblank(NAMES(jj,:)),deblank(TeXNAMES(jj,:)));
         end
         fprintf(fidTeX,'\\centering \n');
@@ -329,10 +344,9 @@ for plt = 1:nbplt,
         TeXNAMES = [];
     end
     hh = dyn_figure(DynareOptions.nodisplay,'Name','Parameters Densities');
-    for k=1:min(nstar,length(xparam)-(plt-1)*nstar)
+    for k=1:length(xparam)
         subplot(nr,nc,k)
-        kk = (plt-1)*nstar+k;
-        [name,texname] = get_the_name(kk,TeX,Model,EstimatedParameters,DynareOptions);
+        [name,texname] = get_the_name(k,TeX,Model,EstimatedParameters,DynareOptions);
         if TeX
             if isempty(NAMES)
                 NAMES = name;
@@ -342,8 +356,8 @@ for plt = 1:nbplt,
                 TeXNAMES = char(TeXNAMES,texname);
             end
         end
-        optimal_bandwidth = mh_optimal_bandwidth(distrib_param(kk,:)',number_of_particles,bandwidth,kernel_function);
-        [density(:,1),density(:,2)] = kernel_density_estimate(distrib_param(kk,:)',number_of_grid_points,...
+        optimal_bandwidth = mh_optimal_bandwidth(distrib_param(k,:)',number_of_particles,bandwidth,kernel_function);
+        [density(:,1),density(:,2)] = kernel_density_estimate(distrib_param(k,:)',number_of_grid_points,...
                                                           number_of_particles,optimal_bandwidth,kernel_function);
         plot(density(:,1),density(:,2));
         hold on
@@ -356,7 +370,7 @@ for plt = 1:nbplt,
     if TeX
         % TeX eps loader file
         fprintf(fidTeX,'\\begin{figure}[H]\n');
-        for jj = 1:min(nstar,length(x)-(plt-1)*nstar)
+        for jj = 1:length(x)
             fprintf(fidTeX,'\\psfrag{%s}[1][][0.5][0]{%s}\n',deblank(NAMES(jj,:)),deblank(TeXNAMES(jj,:)));
         end
         fprintf(fidTeX,'\\centering \n');
