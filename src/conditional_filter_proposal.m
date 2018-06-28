@@ -74,7 +74,11 @@ if isempty(init_flag2)
     init_flag2 = 1;
 end
 
-if ParticleOptions.proposal_approximation.cubature || ParticleOptions.proposal_approximation.montecarlo
+if ParticleOptions.proposal_approximation.montecarlo
+    nodes = randn(ParticleOptions.number_of_particles/10,number_of_structural_innovations) ;
+    weights = 1/ParticleOptions.number_of_particles ;
+    weights_c = weights ;
+elseif ParticleOptions.proposal_approximation.cubature
     [nodes,weights] = spherical_radial_sigma_points(number_of_structural_innovations);
     weights_c = weights ;
 elseif ParticleOptions.proposal_approximation.unscented
@@ -108,7 +112,8 @@ if ParticleOptions.proposal_approximation.cubature || ParticleOptions.proposal_a
     StateVectorMean = PredictedStateMean + (CovarianceObservedStateSquareRoot/PredictedObservedVarianceSquareRoot)*Error ;
     if ParticleOptions.cpf_weights_method.amisanotristani
         Weights = SampleWeights.*probability2(zeros(number_of_observed_variables,1),PredictedObservedVarianceSquareRoot,Error) ;
-    end
+ %       Weights = SampleWeights.*sum(weights*probability2(obs,H_lower_triangular_cholesky,tmp(mf1,:)),1) ;
+     end
 else
     dState = bsxfun(@minus,tmp(mf0,:),PredictedStateMean);
     dObserved = bsxfun(@minus,tmp(mf1,:),PredictedObservedMean);
@@ -130,7 +135,8 @@ else
     end 
     if ParticleOptions.cpf_weights_method.amisanotristani
         Weights = SampleWeights.*probability2(zeros(number_of_observed_variables,1),chol(PredictedObservedVariance)',Error) ;
-    end
+%        Weights = SampleWeights.*sum(probability2(obs,H_lower_triangular_cholesky,tmp(mf1,:))*weights) ;
+     end
 end
 
 ProposalStateVector = StateVectorVarianceSquareRoot*randn(size(StateVectorVarianceSquareRoot,2),1)+StateVectorMean ;
