@@ -169,7 +169,9 @@ for t=1:sample_size
             return
         end
     end
-    lik(t) = log( probability2(0,PredictedObservedVarianceSquareRoot,PredictionError) ) ;
+%    lik(t) = log( probability2(0,PredictedObservedVarianceSquareRoot,PredictionError) ) ;
+    lik(t) = log( sum(probability2(Y(:,t),H_lower_triangular_cholesky,tmp(mf1,:)).*weights,1) ) ;
+%    lik(t) = log(sum(probability2(Y(:,t),PredictedObservedVarianceSquareRoot,tmp(mf1,:)).*weights,1) ) ;
 end
 
 LIK = -sum(lik(start:end));
