@@ -102,15 +102,17 @@ ks = 0 ;
 StateParticles = bsxfun(@plus,StateVectorVarianceSquareRoot*randn(state_variance_rank,number_of_particles),StateVectorMean);
 SampleWeights = ones(1,number_of_particles)/number_of_particles ;
 for t=1:sample_size
-    for i=1:number_of_particles
-        [StateParticles(:,i),SampleWeights(i),flag] = ...
-            conditional_filter_proposal(ReducedForm,Y(:,t),StateParticles(:,i),SampleWeights(i),Q_lower_triangular_cholesky,H_lower_triangular_cholesky,H,ParticleOptions,ThreadsOptions,normconst2) ;
-        if flag==1 
-            LIK=-Inf;
-            lik(t)=-Inf;
-            return 
-        end 
+    obs=Y(:,t);
+    flag = zeros(number_of_particles) ;
+    parfor i=1:number_of_particles
+        [StateParticles(:,i),SampleWeights(i),flag(i)] = ...
+            conditional_filter_proposal(ReducedForm,obs,StateParticles(:,i),SampleWeights(i),Q_lower_triangular_cholesky,H_lower_triangular_cholesky,H,ParticleOptions,ThreadsOptions,normconst2) ;
     end
+    if sum(flag)~=0 
+      LIK=-Inf;
+      lik(t)=-Inf;
+      return 
+    end 
     SumSampleWeights = sum(SampleWeights) ;
     lik(t) = log(SumSampleWeights) ;
     SampleWeights = SampleWeights./SumSampleWeights ;
