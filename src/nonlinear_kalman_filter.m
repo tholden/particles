@@ -89,7 +89,11 @@ end
 
 % compute gaussian quadrature nodes and weights on states and shocks
 
-if ParticleOptions.proposal_approximation.cubature || ParticleOptions.proposal_approximation.montecarlo
+if ParticleOptions.proposal_approximation.montecarlo
+    nodes = randn(ParticleOptions.number_of_particles,number_of_state_variables+number_of_structural_innovations) ;
+    weights = 1/ParticleOptions.number_of_particles ;
+    weights_c = weights ;
+elseif ParticleOptions.proposal_approximation.cubature
     [nodes,weights] = spherical_radial_sigma_points(number_of_state_variables+number_of_structural_innovations) ;
     weights_c = weights ;
 elseif ParticleOptions.proposal_approximation.unscented
@@ -165,7 +169,9 @@ for t=1:sample_size
             return
         end
     end
-    lik(t) = log( probability2(0,PredictedObservedVarianceSquareRoot,PredictionError) ) ;
+%    lik(t) = log( probability2(0,PredictedObservedVarianceSquareRoot,PredictionError) ) ;
+    lik(t) = log( sum(probability2(Y(:,t),H_lower_triangular_cholesky,tmp(mf1,:)).*weights,1) ) ;
+%    lik(t) = log(sum(probability2(Y(:,t),PredictedObservedVarianceSquareRoot,tmp(mf1,:)).*weights,1) ) ;
 end
 
 LIK = -sum(lik(start:end));

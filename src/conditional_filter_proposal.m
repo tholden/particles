@@ -1,4 +1,4 @@
-function [ProposalStateVector,Weights] = conditional_filter_proposal(ReducedForm,obs,StateVectors,SampleWeights,Q_lower_triangular_cholesky,H_lower_triangular_cholesky,H,ParticleOptions,ThreadsOptions,normconst2)
+function [ProposalStateVector,Weights,flag] = conditional_filter_proposal(ReducedForm,obs,StateVectors,SampleWeights,Q_lower_triangular_cholesky,H_lower_triangular_cholesky,H,ParticleOptions,ThreadsOptions,normconst2)
 %
 % Computes the proposal for each past particle using Gaussian approximations
 % for the state errors and the Kalman filter
@@ -42,6 +42,7 @@ persistent init_flag2 mf0 mf1
 persistent number_of_state_variables number_of_observed_variables
 persistent number_of_structural_innovations
 
+flag=0 ;
 % Set local state space model (first-order approximation).
 ghx  = ReducedForm.ghx;
 ghu  = ReducedForm.ghu;
@@ -73,7 +74,11 @@ if isempty(init_flag2)
     init_flag2 = 1;
 end
 
-if ParticleOptions.proposal_approximation.cubature || ParticleOptions.proposal_approximation.montecarlo
+if ParticleOptions.proposal_approximation.montecarlo
+    nodes = randn(ParticleOptions.number_of_particles/10,number_of_structural_innovations) ;
+    weights = 1/ParticleOptions.number_of_particles ;
+    weights_c = weights ;
+elseif ParticleOptions.proposal_approximation.cubature
     [nodes,weights] = spherical_radial_sigma_points(number_of_structural_innovations);
     weights_c = weights ;
 elseif ParticleOptions.proposal_approximation.unscented
@@ -107,7 +112,8 @@ if ParticleOptions.proposal_approximation.cubature || ParticleOptions.proposal_a
     StateVectorMean = PredictedStateMean + (CovarianceObservedStateSquareRoot/PredictedObservedVarianceSquareRoot)*Error ;
     if ParticleOptions.cpf_weights_method.amisanotristani
         Weights = SampleWeights.*probability2(zeros(number_of_observed_variables,1),PredictedObservedVarianceSquareRoot,Error) ;
-    end
+ %       Weights = SampleWeights.*sum(weights*probability2(obs,H_lower_triangular_cholesky,tmp(mf1,:)),1) ;
+     end
 else
     dState = bsxfun(@minus,tmp(mf0,:),PredictedStateMean);
     dObserved = bsxfun(@minus,tmp(mf1,:),PredictedObservedMean);
@@ -118,15 +124,32 @@ else
     Error = obs - PredictedObservedMean ;
     StateVectorMean = PredictedStateMean + KalmanFilterGain*Error ;
     StateVectorVariance = PredictedStateVariance - KalmanFilterGain*PredictedObservedVariance*KalmanFilterGain';
-    StateVectorVarianceSquareRoot = chol(StateVectorVariance + eye(number_of_state_variables)*1e-6)' ;
+    StateVectorVariance = 0.5*(StateVectorVariance+StateVectorVariance');
+    %StateVectorVarianceSquareRoot = reduced_rank_cholesky(StateVectorVariance)';%chol(StateVectorVariance + eye(number_of_state_variables)*1e-6)' ;
+    [StateVectorVarianceSquareRoot,p] = chol(StateVectorVariance,'lower') ;
+    if p
+        flag=1;
+        ProposalStateVector = zeros(number_of_state_variables,1) ;
+        Weights = 0.0 ;
+        return
+    end 
     if ParticleOptions.cpf_weights_method.amisanotristani
         Weights = SampleWeights.*probability2(zeros(number_of_observed_variables,1),chol(PredictedObservedVariance)',Error) ;
-    end
+%        Weights = SampleWeights.*sum(probability2(obs,H_lower_triangular_cholesky,tmp(mf1,:))*weights) ;
+     end
 end
 
-PredictedStateVarianceSquareRoot = chol(PredictedStateVariance + eye(number_of_state_variables)*1e-6)'  ;
 ProposalStateVector = StateVectorVarianceSquareRoot*randn(size(StateVectorVarianceSquareRoot,2),1)+StateVectorMean ;
 if ParticleOptions.cpf_weights_method.murrayjonesparslow
+    PredictedStateVariance = 0.5*(PredictedStateVariance+PredictedStateVariance');
+    %PredictedStateVarianceSquareRoot = reduced_rank_cholesky(PredictedStateVariance)';%chol(PredictedStateVariance + eye(number_of_state_variables)*1e-6)'  ;
+    [PredictedStateVarianceSquareRoot,p] = chol(PredictedStateVariance,'lower')  ;
+    if p
+        flag=1;
+        ProposalStateVector = zeros(number_of_state_variables,1) ;
+        Weights = 0.0 ;
+        return
+    end 
     Prior = probability2(PredictedStateMean,PredictedStateVarianceSquareRoot,ProposalStateVector) ;
     Posterior = probability2(StateVectorMean,StateVectorVarianceSquareRoot,ProposalStateVector) ;
     Likelihood = probability2(obs,H_lower_triangular_cholesky,measurement_equations(ProposalStateVector,ReducedForm,ThreadsOptions)) ;
